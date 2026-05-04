@@ -50,8 +50,8 @@ function Get-BudgetInfo {
 
 # --- Routing preview logic (mirrors proxy_callbacks.py _classify) ---
 $planningKeywords = @("architecture","design","strategy","plan","roadmap","structure","organize","approach","blueprint","system design","refactor the","rewrite the","migrate from")
-$codePatterns = @("\.py\b","\.js\b","\.ts\b","\.go\b","\.rs\b","\.java\b","\bfix\b","\bdebug\b","\bimplement\b","\bbuild\b","\bcompile\b","\berror\b","\bbug\b","\bfunction\b","\bclass\b","\bmethod\b","```")
-$complexKeywords = @("analyze","compare","evaluate","assess","deep dive")
+$codePatterns = @("\.py\b", "\.js\b", "\.ts\b", "\.go\b", "\.rs\b", "\.java\b", "\bfix\b", "\bdebug\b", "\bimplement\b", "\bbuild\b", "\bcompile\b", "\berror\b", "\bbug\b", "\bfunction\b", "\bclass\b", "\bmethod\b", "```")
+$complexKeywords = @("analyze", "compare", "evaluate", "assess", "deep dive")
 
 function Get-Route {
     param([string]$Message)
@@ -69,7 +69,7 @@ function Get-Route {
 
 $routeLabels = @{
     planner   = "V4 Pro (Deep Reasoning)"
-    executor  = "V4 Flash (Fast & Cheap)"
+    executor  = 'V4 Flash (Fast + Cheap)'
     coder     = "Kimi K2.6 (Best Coding)"
     validator = "GLM-5.1 (Quick Lookups)"
 }
@@ -215,7 +215,8 @@ $inputPct = [math]::Round(($budgetInfo.input / 100000) * 100, 1)
 $outputPct = [math]::Round(($budgetInfo.output / 200000) * 100, 1)
 $maxPct = [math]::Max($inputPct, $outputPct)
 $budgetLabel = if ($maxPct -ge 95) { "CRITICAL" } elseif ($maxPct -ge 80) { "LOW" } else { "OK" }
-$budgetStatus.Text = "Budget: $budgetLabel ($maxPct%)"
+$budgetPctStr = "$maxPct" + "%"
+$budgetStatus.Text = "Budget: $budgetLabel ($budgetPctStr)"
 $budgetStatus.ForeColor = if ($maxPct -ge 95) { $redColor } elseif ($maxPct -ge 80) { $yellowColor } else { $greenColor }
 
 $y += 36
@@ -288,7 +289,8 @@ foreach ($r in $roles) {
         $null = $card.Controls.Add($meta)
     } else {
         $meta = New-Object System.Windows.Forms.Label
-        $meta.Text = "$($r.cost)  |  $($r.speed) tok/s"
+        $speedText = "{0}  |  {1} tok/s" -f $r.cost, $r.speed
+        $meta.Text = $speedText
         $meta.Location = New-Object System.Drawing.Point(12, 48)
         $meta.Size = New-Object System.Drawing.Size(230, 16)
         $meta.Font = New-Object System.Drawing.Font("Consolas", 7.5)
