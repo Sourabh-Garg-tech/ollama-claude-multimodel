@@ -1,4 +1,5 @@
-import litellm
+import time
+from ollama import Client
 from .models import MODELS, estimate_cost
 from .budget import BudgetTracker
 
@@ -7,6 +8,19 @@ VALIDATE_PROMPT = "Check correctness of this output. Reply with only PASS or FAI
 
 # On low budget, executor downgrades to the cheapest model
 BUDGET_DOWNGRADE = {"executor": "validator"}
+
+# Simple retry: 3 attempts with 5s backoff
+MAX_RETRIES = 3
+RETRY_BACKOFF = 5
+
+_client = None
+
+
+def _get_client() -> Client:
+    global _client
+    if _client is None:
+        _client = Client(host="http://localhost:11434")
+    return _client
 
 
 def call(role: str, prompt: str, budget: BudgetTracker | None = None) -> dict:
@@ -17,26 +31,34 @@ def call(role: str, prompt: str, budget: BudgetTracker | None = None) -> dict:
     if budget and budget.status() == "critical":
         raise CriticalBudgetError("Daily token budget is critical. Pausing requests.")
 
-    response = litellm.completion(
-        model=MODELS[effective_role],
-        messages=[{"role": "user", "content": prompt}],
-        timeout=120,
-    )
-    content = response.choices[0].message.content
-    usage = response.usage
-    input_tokens = usage.prompt_tokens
-    output_tokens = usage.completion_tokens
+    model = MODELS[effective_role]
+    client = _get_client()
 
-    if budget:
-        budget.add_usage(input_tokens, output_tokens)
+    for attempt in range(MAX_RETRIES):
+        try:
+            response = client.chat(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+            )
+            content = response.message.content
+            input_tokens = response.prompt_eval_count or 0
+            output_tokens = response.eval_count or 0
 
-    return {
-        "content": content,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "cost": estimate_cost(effective_role, input_tokens, output_tokens),
-        "role_used": effective_role,
-    }
+            if budget:
+                budget.add_usage(input_tokens, output_tokens)
+
+            return {
+                "content": content,
+                "input_tokens": input_tokens,
+                "output_tokens": output_tokens,
+                "cost": estimate_cost(effective_role, input_tokens, output_tokens),
+                "role_used": effective_role,
+            }
+        except Exception:
+            if attempt < MAX_RETRIES - 1:
+                time.sleep(RETRY_BACKOFF)
+            else:
+                raise
 
 
 class CriticalBudgetError(Exception):

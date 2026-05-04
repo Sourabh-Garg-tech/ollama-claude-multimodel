@@ -19,7 +19,7 @@ def test_models_has_four_roles():
 
 def test_models_are_ollama_tags():
     for role, model in MODELS.items():
-        assert model.startswith("ollama/"), f"{role} model missing ollama/ prefix"
+        assert ":cloud" in model, f"{role} model missing :cloud tag"
 
 
 def test_pricing_positive():

@@ -1,8 +1,8 @@
 MODELS = {
-    "planner":   "ollama/deepseek-v4-pro:cloud",
-    "executor":  "ollama/deepseek-v4-flash:cloud",
-    "coder":     "ollama/kimi-k2.6:cloud",
-    "validator": "ollama/glm-5.1:cloud",
+    "planner":   "deepseek-v4-pro:cloud",
+    "executor":  "deepseek-v4-flash:cloud",
+    "coder":     "kimi-k2.6:cloud",
+    "validator": "glm-5.1:cloud",
 }
 
 PRICING = {
