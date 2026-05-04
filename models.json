@@ -1,36 +1,40 @@
 {
-  "models": [
+  "roles": [
     {
-      "name": "deepseek-v4-pro:cloud",
-      "label": "Architecture & Complex Decisions",
-      "description": "Best for planning, architecture, and complex reasoning tasks. Most capable but slower.",
-      "classification": "planning",
-      "quality_score": 10,
-      "speed_score": 5
+      "role": "planner",
+      "model": "deepseek-v4-pro:cloud",
+      "label": "Planner",
+      "tag": "deepseek-v4-pro",
+      "description": "Deep reasoning, architecture, complex decisions. Most capable.",
+      "cost": "$1.42/M in",
+      "speed": 175
     },
     {
-      "name": "deepseek-v4-flash:cloud",
-      "label": "Reasoning & Cheap Loops",
-      "description": "Fast reasoning model for general tasks and quick iterations. Good balance.",
-      "classification": "default",
-      "quality_score": 8,
-      "speed_score": 9
+      "role": "executor",
+      "model": "deepseek-v4-flash:cloud",
+      "label": "Executor",
+      "tag": "deepseek-v4-flash",
+      "description": "Fast execution, cheap loops, bulk work. Best value.",
+      "cost": "$0.18/M in",
+      "speed": 107
     },
     {
-      "name": "kimi-k2.6:cloud",
-      "label": "Implementation & Coding",
-      "description": "Best for coding, implementation, and step-by-step execution.",
-      "classification": "code",
-      "quality_score": 8,
-      "speed_score": 7
+      "role": "coder",
+      "model": "kimi-k2.6:cloud",
+      "label": "Coder",
+      "tag": "kimi-k2.6",
+      "description": "Coding fallback. Best coding quality. Used when executor fails validation.",
+      "cost": "$1.15/M in",
+      "speed": 139
     },
     {
-      "name": "glm-5.1:cloud",
-      "label": "Quick Lookups & Stability",
-      "description": "Fast and efficient for exploration, quick questions, and stability fallback.",
-      "classification": "lookup",
-      "quality_score": 6,
-      "speed_score": 10
+      "role": "validator",
+      "model": "glm-5.1:cloud",
+      "label": "Validator",
+      "tag": "glm-5.1",
+      "description": "Output validation & stability. Checks every result before use.",
+      "cost": "$1.66/M in",
+      "speed": 150
     }
   ]
 }

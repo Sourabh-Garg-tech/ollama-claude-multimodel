@@ -10,11 +10,10 @@ $maxHistory = 10
 
 # --- Load Models ---
 if (-not (Test-Path $modelsPath)) {
-    [System.Windows.Forms.MessageBox]::Show("models.json not found at: $modelsPath", "Error")
+    [System.Windows.Forms.MessageBox]::Show("models.json not found", "Error")
     exit 1
 }
-$modelsConfig = Get-Content $modelsPath -Raw | ConvertFrom-Json
-$models = $modelsConfig.models
+$roles = (Get-Content $modelsPath -Raw | ConvertFrom-Json).roles
 
 # --- Load History ---
 $history = @()
@@ -23,200 +22,185 @@ if (Test-Path $historyFile) {
 }
 $lastPath = if ($history.Count -gt 0) { $history[0] } else { "" }
 
+# --- Colors ---
+$bgColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
+$cardColor = [System.Drawing.Color]::FromArgb(45, 45, 45)
+$textColor = [System.Drawing.Color]::White
+$dimColor = [System.Drawing.Color]::FromArgb(160, 160, 160)
+$accentColor = [System.Drawing.Color]::FromArgb(0, 180, 216)
+$greenColor = [System.Drawing.Color]::FromArgb(76, 175, 80)
+$borderColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
+
 # --- Form ---
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "Claude Launcher"
-$form.Size = New-Object System.Drawing.Size(520, 420)
+$form.Text = "Multi-Model Router"
+$form.Size = New-Object System.Drawing.Size(560, 480)
 $form.StartPosition = "CenterScreen"
 $form.TopMost = $true
 $form.FormBorderStyle = "FixedDialog"
 $form.MaximizeBox = $false
+$form.BackColor = $bgColor
+$form.ForeColor = $textColor
+
+# --- Header ---
+$header = New-Object System.Windows.Forms.Label
+$header.Text = "Plan  >  Execute  >  Validate  >  Escalate  >  Re-validate"
+$header.Location = New-Object System.Drawing.Point(15, 12)
+$header.Size = New-Object System.Drawing.Size(530, 22)
+$header.ForeColor = $accentColor
+$header.Font = New-Object System.Drawing.Font("Consolas", 10, [System.Drawing.FontStyle]::Bold)
+$null = $form.Controls.Add($header)
 
 # --- Folder Label ---
 $folderLabel = New-Object System.Windows.Forms.Label
-$folderLabel.Text = "Project Folder:"
-$folderLabel.Location = New-Object System.Drawing.Point(10, 8)
+$folderLabel.Text = "Project Folder"
+$folderLabel.Location = New-Object System.Drawing.Point(15, 44)
 $folderLabel.AutoSize = $true
+$folderLabel.ForeColor = $dimColor
 $null = $form.Controls.Add($folderLabel)
 
 # --- Folder ComboBox ---
 $folderCombo = New-Object System.Windows.Forms.ComboBox
-$folderCombo.Size = New-Object System.Drawing.Size(380, 25)
-$folderCombo.Location = New-Object System.Drawing.Point(10, 28)
+$folderCombo.Size = New-Object System.Drawing.Size(420, 25)
+$folderCombo.Location = New-Object System.Drawing.Point(15, 62)
 $folderCombo.DropDownStyle = "DropDown"
 $folderCombo.Items.AddRange($history)
 $folderCombo.Text = $lastPath
+$folderCombo.BackColor = $cardColor
+$folderCombo.ForeColor = $textColor
 $null = $form.Controls.Add($folderCombo)
 
 # --- Browse Button ---
 $browse = New-Object System.Windows.Forms.Button
 $browse.Text = "Browse"
-$browse.Location = New-Object System.Drawing.Point(400, 28)
-$browse.Size = New-Object System.Drawing.Size(100, 25)
-
+$browse.Location = New-Object System.Drawing.Point(445, 61)
+$browse.Size = New-Object System.Drawing.Size(90, 27)
+$browse.FlatStyle = "Flat"
+$browse.BackColor = $cardColor
+$browse.ForeColor = $textColor
+$browse.FlatAppearance.BorderColor = $borderColor
 $browse.Add_Click({
-    $folderBrowser = New-Object System.Windows.Forms.FolderBrowserDialog
-    if ($folderBrowser.ShowDialog() -eq "OK") {
-        $folderCombo.Text = $folderBrowser.SelectedPath
-    }
+    $fb = New-Object System.Windows.Forms.FolderBrowserDialog
+    if ($fb.ShowDialog() -eq "OK") { $folderCombo.Text = $fb.SelectedPath }
 })
-
 $null = $form.Controls.Add($browse)
 
-# --- Task Description Label ---
-$taskLabel = New-Object System.Windows.Forms.Label
-$taskLabel.Text = "What are you working on? (optional - used for smart model suggestion)"
-$taskLabel.Location = New-Object System.Drawing.Point(10, 62)
-$taskLabel.AutoSize = $true
-$null = $form.Controls.Add($taskLabel)
+# --- Separator ---
+$sep = New-Object System.Windows.Forms.Label
+$sep.Text = ""
+$sep.Location = New-Object System.Drawing.Point(15, 96)
+$sep.Size = New-Object System.Drawing.Size(520, 1)
+$sep.BackColor = $borderColor
+$null = $form.Controls.Add($sep)
 
-# --- Task Description TextBox ---
-$taskBox = New-Object System.Windows.Forms.TextBox
-$taskBox.Multiline = $true
-$taskBox.Size = New-Object System.Drawing.Size(490, 50)
-$taskBox.Location = New-Object System.Drawing.Point(10, 82)
-$taskBox.ScrollBars = "Vertical"
-$null = $form.Controls.Add($taskBox)
+# --- Role Cards ---
+$roleY = 104
+$roleCards = @{}
+$selectedRole = "executor"
 
-# --- Suggest Button ---
-$suggest = New-Object System.Windows.Forms.Button
-$suggest.Text = "Suggest Model"
-$suggest.Location = New-Object System.Drawing.Point(10, 135)
-$suggest.Size = New-Object System.Drawing.Size(120, 25)
+foreach ($r in $roles) {
+    $card = New-Object System.Windows.Forms.Panel
+    $card.Size = New-Object System.Drawing.Size(250, 70)
+    $card.Location = New-Object System.Drawing.Point(15, $roleY)
+    $card.BackColor = $cardColor
+    $card.BorderStyle = [System.Windows.Forms.BorderStyle]::None
+    $card.Tag = $r.role
 
-$suggest.Add_Click({
-    $desc = $taskBox.Text.Trim()
-    if ($desc -eq "") {
-        [System.Windows.Forms.MessageBox]::Show("Enter a task description first.", "Suggest Model")
-        return
-    }
+    $lbl = New-Object System.Windows.Forms.Label
+    $lbl.Text = "$($r.label.ToUpper())  $($r.tag)"
+    $lbl.Location = New-Object System.Drawing.Point(10, 6)
+    $lbl.Size = New-Object System.Drawing.Size(230, 18)
+    $lbl.Font = New-Object System.Drawing.Font("Consolas", 9, [System.Drawing.FontStyle]::Bold)
+    $lbl.ForeColor = $accentColor
+    $lbl.Tag = "label"
+    $null = $card.Controls.Add($lbl)
 
-    $pythonExe = Join-Path $PSScriptRoot ".venv\Scripts\python.exe"
-    $classifier = Join-Path $PSScriptRoot "smart_router\classifier.py"
+    $desc = New-Object System.Windows.Forms.Label
+    $desc.Text = $r.description
+    $desc.Location = New-Object System.Drawing.Point(10, 26)
+    $desc.Size = New-Object System.Drawing.Size(230, 28)
+    $desc.ForeColor = $dimColor
+    $desc.Tag = "desc"
+    $null = $card.Controls.Add($desc)
 
-    if (-not (Test-Path $pythonExe)) {
-        [System.Windows.Forms.MessageBox]::Show("Python virtual environment not found. Run launch-claude.ps1 once to set it up.", "Error")
-        return
-    }
+    $cost = New-Object System.Windows.Forms.Label
+    $cost.Text = "$($r.cost)  |  $($r.speed) tok/s"
+    $cost.Location = New-Object System.Drawing.Point(10, 54)
+    $cost.Size = New-Object System.Drawing.Size(230, 14)
+    $cost.Font = New-Object System.Drawing.Font("Consolas", 8)
+    $cost.ForeColor = $greenColor
+    $cost.Tag = "cost"
+    $null = $card.Controls.Add($cost)
 
-    try {
-        $tmpPy = [System.IO.Path]::GetTempFileName() + ".py"
-        @"
-import sys
-sys.path.insert(0, 'smart_router')
-from classifier import classify_description
-print(classify_description(r'''$desc'''))
-"@ | Set-Content -Path $tmpPy -Encoding UTF8
-
-        $output = & $pythonExe $tmpPy 2>$null
-        Remove-Item $tmpPy -ErrorAction SilentlyContinue
-        $classification = $output.Trim()
-
-        # Find best matching model in the loaded list
-        $targetModel = switch ($classification) {
-            "planning"   { "deepseek-v4-pro:cloud" }
-            "complex"    { "deepseek-v4-pro:cloud" }
-            "code"       { "kimi-k2.6:cloud" }
-            "lookup"     { "glm-5.1:cloud" }
-            default      { "deepseek-v4-flash:cloud" }
+    $card.Add_Click({
+        $script:selectedRole = $this.Tag
+        foreach ($c in $roleCards.Values) {
+            $c.BackColor = $cardColor
         }
+        $this.BackColor = [System.Drawing.Color]::FromArgb(0, 100, 120)
+    }.GetNewClosure())
 
-        $foundIdx = -1
-        for ($i = 0; $i -lt $models.Count; $i++) {
-            if ($models[$i].name -eq $targetModel) {
-                $foundIdx = $i
-                break
-            }
-        }
+    $null = $form.Controls.Add($card)
+    $roleCards[$r.role] = $card
 
-        if ($foundIdx -ge 0) {
-            $modelCombo.SelectedIndex = $foundIdx
-            $suggestLabel.Text = "Recommended: $($models[$foundIdx].label) for '$classification' tasks"
-            $suggestLabel.ForeColor = [System.Drawing.Color]::Green
-        } else {
-            $suggestLabel.Text = "Classification: $classification - no exact match in model list"
-            $suggestLabel.ForeColor = [System.Drawing.Color]::Orange
-        }
-    } catch {
-        $suggestLabel.Text = "Suggestion failed: $_"
-        $suggestLabel.ForeColor = [System.Drawing.Color]::Red
+    # Second column
+    $r2 = $roles | Where-Object { $_.role -eq $r.role }
+    $nextIdx = [array]::IndexOf($roles, $r)
+
+    if ($nextIdx % 2 -eq 1) {
+        # This is right column - move it right
+        $card.Location = New-Object System.Drawing.Point(285, $roleY - 76)
+        $roleY += 2  # tiny increment since we handle layout in pairs
     }
-})
-
-$null = $form.Controls.Add($suggest)
-
-# --- Suggestion Result Label ---
-$suggestLabel = New-Object System.Windows.Forms.Label
-$suggestLabel.Text = ""
-$suggestLabel.Location = New-Object System.Drawing.Point(140, 140)
-$suggestLabel.Size = New-Object System.Drawing.Size(360, 20)
-$suggestLabel.AutoSize = $false
-$null = $form.Controls.Add($suggestLabel)
-
-# --- Model Label ---
-$modelLabel = New-Object System.Windows.Forms.Label
-$modelLabel.Text = "Model:"
-$modelLabel.Location = New-Object System.Drawing.Point(10, 170)
-$modelLabel.AutoSize = $true
-$null = $form.Controls.Add($modelLabel)
-
-# --- Model ComboBox ---
-$modelCombo = New-Object System.Windows.Forms.ComboBox
-$modelCombo.Size = New-Object System.Drawing.Size(490, 25)
-$modelCombo.Location = New-Object System.Drawing.Point(10, 190)
-$modelCombo.DropDownStyle = "DropDownList"
-
-foreach ($m in $models) {
-    $null = $modelCombo.Items.Add("$($m.label) ($($m.name))")
-}
-if ($modelCombo.Items.Count -gt 0) {
-    $modelCombo.SelectedIndex = 1  # Default to kimi-k2.6 (implementation)
 }
 
-$null = $form.Controls.Add($modelCombo)
-
-# --- Model Description ---
-$descLabel = New-Object System.Windows.Forms.Label
-$descLabel.Text = ""
-$descLabel.Location = New-Object System.Drawing.Point(10, 218)
-$descLabel.Size = New-Object System.Drawing.Size(490, 40)
-$descLabel.ForeColor = [System.Drawing.Color]::Gray
-$null = $form.Controls.Add($descLabel)
-
-$modelCombo.Add_SelectedIndexChanged({
-    $idx = $modelCombo.SelectedIndex
-    if ($idx -ge 0 -and $idx -lt $models.Count) {
-        $descLabel.Text = $models[$idx].description
-    }
-})
-
-# Trigger initial description
-if ($modelCombo.SelectedIndex -ge 0) {
-    $descLabel.Text = $models[$modelCombo.SelectedIndex].description
+# Fix layout: 2 columns, 2 rows
+if ($roles.Count -ge 4) {
+    $roleCards[$roles[0].role].Location = New-Object System.Drawing.Point(15, 104)
+    $roleCards[$roles[1].role].Location = New-Object System.Drawing.Point(285, 104)
+    $roleCards[$roles[2].role].Location = New-Object System.Drawing.Point(15, 182)
+    $roleCards[$roles[3].role].Location = New-Object System.Drawing.Point(285, 182)
 }
+
+# Default selection
+$roleCards["executor"].BackColor = [System.Drawing.Color]::FromArgb(0, 100, 120)
+
+# --- Pipeline Info ---
+$infoLabel = New-Object System.Windows.Forms.Label
+$infoLabel.Text = "The pipeline automatically routes through all 4 roles." + "`n" + `
+    "Pick the STARTING model below. Executor is recommended for most tasks."
+$infoLabel.Location = New-Object System.Drawing.Point(15, 264)
+$infoLabel.Size = New-Object System.Drawing.Size(520, 34)
+$infoLabel.ForeColor = $dimColor
+$null = $form.Controls.Add($infoLabel)
 
 # --- Launch Button ---
 $launch = New-Object System.Windows.Forms.Button
 $launch.Text = "Launch"
-$launch.Size = New-Object System.Drawing.Size(200, 35)
-$launch.Location = New-Object System.Drawing.Point(155, 275)
+$launch.Size = New-Object System.Drawing.Size(520, 40)
+$launch.Location = New-Object System.Drawing.Point(15, 310)
+$launch.FlatStyle = "Flat"
+$launch.BackColor = $accentColor
+$launch.ForeColor = $textColor
+$launch.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
+$launch.Cursor = [System.Windows.Forms.Cursors]::Hand
+$launch.FlatAppearance.BorderColor = $accentColor
 
 $launch.Add_Click({
     $path = $folderCombo.Text
-    $modelIdx = $modelCombo.SelectedIndex
-
     if (-not (Test-Path $path)) {
         [System.Windows.Forms.MessageBox]::Show("Invalid folder path.", "Error")
         return
     }
 
-    if ($modelIdx -lt 0) {
-        [System.Windows.Forms.MessageBox]::Show("Please select a model.", "Error")
+    $roleObj = $roles | Where-Object { $_.role -eq $selectedRole }
+    if (-not $roleObj) {
+        [System.Windows.Forms.MessageBox]::Show("Select a role.", "Error")
         return
     }
 
-    $modelName = $models[$modelIdx].name
-    $modelLbl = $models[$modelIdx].label
+    $modelName = $roleObj.model
+    $modelLbl = $roleObj.label
 
     # Save folder history
     $newHistory = @($path) + ($history | Where-Object { $_ -ne $path })
@@ -239,5 +223,15 @@ $launch.Add_Click({
 
 $null = $form.Controls.Add($launch)
 
+# --- Status Bar ---
+$statusBar = New-Object System.Windows.Forms.Label
+$statusBar.Text = "Ollama Cloud  |  Pipeline v1  |  LiteLLM Proxy :4000"
+$statusBar.Location = New-Object System.Drawing.Point(15, 362)
+$statusBar.Size = New-Object System.Drawing.Size(520, 18)
+$statusBar.ForeColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
+$statusBar.Font = New-Object System.Drawing.Font("Consolas", 8)
+$null = $form.Controls.Add($statusBar)
+
 # --- Run ---
+$form.Size = New-Object System.Drawing.Size(560, 420)
 [System.Windows.Forms.Application]::Run($form)
