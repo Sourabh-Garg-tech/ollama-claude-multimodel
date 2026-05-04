@@ -30,6 +30,8 @@ router_settings:
   cooldown_time: 30
 
 litellm_settings:
+  callbacks:
+    - proxy_callbacks.litellm_logging_callback
   drop_params: true
 
 general_settings:
