@@ -55,11 +55,12 @@ Task --> Plan (V4 Pro) --> Execute (V4 Flash) --> Validate (GLM-5.1)
 
 ```
 ollama-claude-multimodel/
+├── launcher.ps1              # GUI launcher (dark theme, pre-flight checks, routing preview)
+├── launch-claude.ps1         # Start proxy + launch Claude CLI
+├── Claude Launcher.bat       # Double-click shortcut to launcher.ps1
 ├── proxy_callbacks.py        # LiteLLM auto-routing callback + budget enforcement
 ├── proxy_config.yaml         # LiteLLM proxy configuration
 ├── models.json               # Model metadata for GUI
-├── launch-claude.ps1         # Start proxy + launch Claude CLI
-├── claude-launcher.ps1       # Windows Forms GUI launcher
 ├── setup.ps1                 # Environment setup
 ├── requirements.txt          # Python dependencies
 ├── router/                   # Programmatic pipeline (secondary)
@@ -94,12 +95,17 @@ python -m venv .venv
 ### Launch
 
 ```powershell
-# GUI launcher (Windows) - pick model or Auto
+# GUI launcher (Windows) — pick model or Auto, with pre-flight checks and budget display
 .\Claude Launcher.bat
 
 # Or directly:
 .\launch-claude.ps1 -Model deepseek-v4-flash:cloud -ModelLabel "Auto"
 ```
+
+The GUI launcher remembers your last 10 project folders and shows:
+- Ollama and proxy status (green/red indicators)
+- Daily token budget with progress bars
+- Routing preview (type a message, see which model handles it)
 
 ### Programmatic Usage
 

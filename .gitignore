@@ -37,3 +37,9 @@ logs/*.log
 # Environment/secrets
 .env
 .env.*
+
+# Claude Code project data
+.claude/
+
+# Stray copies
+*Copy*

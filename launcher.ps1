@@ -48,9 +48,8 @@ function Get-BudgetInfo {
     return @{ input = 0; output = 0; date = (Get-Date -Format "yyyy-MM-dd") }
 }
 
-# --- Routing preview logic (mirrors proxy_callbacks.py _classify) ---
-$planningKeywords = @("architecture","design","strategy","plan","roadmap","structure","organize","approach","blueprint","system design","refactor the","rewrite the","migrate from")
-$codePatterns = @("\.py\b", "\.js\b", "\.ts\b", "\.go\b", "\.rs\b", "\.java\b", "\bfix\b", "\bdebug\b", "\bimplement\b", "\bbuild\b", "\bcompile\b", "\berror\b", "\bbug\b", "\bfunction\b", "\bclass\b", "\bmethod\b", "```")
+# --- Routing preview logic ---
+$planningKeywords = @("architecture", "design", "strategy", "plan", "roadmap", "structure", "organize", "approach", "blueprint", "system design", "refactor the", "rewrite the", "migrate from")
 $complexKeywords = @("analyze", "compare", "evaluate", "assess", "deep dive")
 
 function Get-Route {
@@ -60,7 +59,10 @@ function Get-Route {
     if ($len -lt 200 -and $Message.Trim().EndsWith("?")) { return "validator" }
     $lower = $Message.ToLower()
     foreach ($kw in $planningKeywords) { if ($lower.Contains($kw)) { return "planner" } }
-    foreach ($p in $codePatterns) { if ($Message -match $p) { return "coder" } }
+    if ($Message -match '\.py\b|\.js\b|\.ts\b|\.go\b|\.rs\b|\.java\b') { return "coder" }
+    if ($Message -match '\bfix\b|\bdebug\b|\bimplement\b|\bbuild\b|\bcompile\b') { return "coder" }
+    if ($Message -match '\berror\b|\bbug\b|\bfunction\b|\bclass\b|\bmethod\b') { return "coder" }
+    if ($Message -match '```') { return "coder" }
     if ($len -ge 2000) {
         foreach ($kw in $complexKeywords) { if ($lower.Contains($kw)) { return "planner" } }
     }
@@ -103,7 +105,7 @@ $form.ForeColor = $textColor
 
 $y = 0
 
-# --- Title bar area ---
+# --- Title bar ---
 $titlePanel = New-Object System.Windows.Forms.Panel
 $titlePanel.Size = New-Object System.Drawing.Size(580, 50)
 $titlePanel.Location = New-Object System.Drawing.Point(0, 0)
@@ -206,18 +208,22 @@ $ollamaOk = Test-Ollama
 $proxyOk = Test-Proxy
 $budgetInfo = Get-BudgetInfo
 
-$ollamaStatus.Text = if ($ollamaOk) { "Ollama: Running" } else { "Ollama: Down" }
-$ollamaStatus.ForeColor = if ($ollamaOk) { $greenColor } else { $redColor }
-$proxyStatus.Text = if ($proxyOk) { "Proxy: Ready" } else { "Proxy: Off" }
-$proxyStatus.ForeColor = if ($proxyOk) { $greenColor } else { $yellowColor }
+if ($ollamaOk) { $ollamaStatus.Text = "Ollama: Running"; $ollamaStatus.ForeColor = $greenColor }
+else { $ollamaStatus.Text = "Ollama: Down"; $ollamaStatus.ForeColor = $redColor }
+
+if ($proxyOk) { $proxyStatus.Text = "Proxy: Ready"; $proxyStatus.ForeColor = $greenColor }
+else { $proxyStatus.Text = "Proxy: Off"; $proxyStatus.ForeColor = $yellowColor }
 
 $inputPct = [math]::Round(($budgetInfo.input / 100000) * 100, 1)
 $outputPct = [math]::Round(($budgetInfo.output / 200000) * 100, 1)
 $maxPct = [math]::Max($inputPct, $outputPct)
-$budgetLabel = if ($maxPct -ge 95) { "CRITICAL" } elseif ($maxPct -ge 80) { "LOW" } else { "OK" }
-$budgetPctStr = "$maxPct" + "%"
-$budgetStatus.Text = "Budget: $budgetLabel ($budgetPctStr)"
-$budgetStatus.ForeColor = if ($maxPct -ge 95) { $redColor } elseif ($maxPct -ge 80) { $yellowColor } else { $greenColor }
+
+if ($maxPct -ge 95) { $budgetLabel = "CRITICAL"; $budgetStatus.ForeColor = $redColor }
+elseif ($maxPct -ge 80) { $budgetLabel = "LOW"; $budgetStatus.ForeColor = $yellowColor }
+else { $budgetLabel = "OK"; $budgetStatus.ForeColor = $greenColor }
+
+$maxPctStr = [string]$maxPct + "%"
+$budgetStatus.Text = "Budget: $budgetLabel ($maxPctStr)"
 
 $y += 36
 
@@ -289,8 +295,9 @@ foreach ($r in $roles) {
         $null = $card.Controls.Add($meta)
     } else {
         $meta = New-Object System.Windows.Forms.Label
-        $speedText = "{0}  |  {1} tok/s" -f $r.cost, $r.speed
-        $meta.Text = $speedText
+        $costVal = $r.cost
+        $speedVal = $r.speed
+        $meta.Text = "$costVal  |  $speedVal tok/s"
         $meta.Location = New-Object System.Drawing.Point(12, 48)
         $meta.Size = New-Object System.Drawing.Size(230, 16)
         $meta.Font = New-Object System.Drawing.Font("Consolas", 7.5)
@@ -304,7 +311,8 @@ foreach ($r in $roles) {
         foreach ($c in $roleCards.Values) {
             $c.BackColor = $cardColor
         }
-        $this.BackColor = if ($this.Tag -eq "auto") { $autoSelect } else { $manualSelect }
+        if ($this.Tag -eq "auto") { $this.BackColor = $autoSelect }
+        else { $this.BackColor = $manualSelect }
     }.GetNewClosure())
 
     # Hover effects
@@ -322,15 +330,16 @@ foreach ($r in $roles) {
 }
 
 # Layout: Auto full width, then 2x2 grid
+$col2X = [int](20 + $cardW + $cardGap)
 $roleCards["auto"].Location = New-Object System.Drawing.Point(20, $y)
 
-$y += $cardH + $cardGap
+$y = [int]($y + $cardH + $cardGap)
 $roleCards["planner"].Location = New-Object System.Drawing.Point(20, $y)
-$roleCards["executor"].Location = New-Object System.Drawing.Point(20 + $cardW + $cardGap, $y)
+$roleCards["executor"].Location = New-Object System.Drawing.Point($col2X, $y)
 
-$y += $cardH + $cardGap
+$y = [int]($y + $cardH + $cardGap)
 $roleCards["coder"].Location = New-Object System.Drawing.Point(20, $y)
-$roleCards["validator"].Location = New-Object System.Drawing.Point(20 + $cardW + $cardGap, $y)
+$roleCards["validator"].Location = New-Object System.Drawing.Point($col2X, $y)
 
 # Default: Auto selected
 $roleCards["auto"].BackColor = $autoSelect
@@ -393,7 +402,6 @@ $previewBtn.Add_Click({
     $previewResult.ForeColor = $greenColor
 })
 
-# Also preview on Enter key
 $previewInput.Add_KeyDown({
     if ($_.KeyCode -eq "Enter") { $previewBtn.PerformClick() }
 })
