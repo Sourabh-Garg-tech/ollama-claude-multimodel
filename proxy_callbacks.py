@@ -18,9 +18,13 @@ import csv
 import json
 import logging
 from pathlib import Path
+from typing import TYPE_CHECKING, Any
+
 from litellm.integrations.custom_logger import CustomLogger
-from litellm.proxy.proxy_server import DualCache, UserAPIKeyAuth
-from litellm.types.utils import CallTypesLiteral
+
+if TYPE_CHECKING:
+    from litellm.proxy.proxy_server import DualCache, UserAPIKeyAuth
+    from litellm.types.utils import CallTypesLiteral
 
 logger = logging.getLogger(__name__)
 
@@ -136,10 +140,10 @@ class AutoRouter(CustomLogger):
 
     async def async_pre_call_hook(
         self,
-        user_api_key_dict: UserAPIKeyAuth,
-        cache: DualCache,
+        user_api_key_dict: Any,
+        cache: Any,
         data: dict,
-        call_type: CallTypesLiteral,
+        call_type: Any,
     ) -> dict:
         """Route each request to the best model based on content."""
         try:
@@ -174,7 +178,7 @@ class AutoRouter(CustomLogger):
     async def async_post_call_success_hook(
         self,
         data: dict,
-        user_api_key_dict: UserAPIKeyAuth,
+        user_api_key_dict: Any,
         response,
     ):
         """Log usage and update budget after each successful call."""
@@ -183,9 +187,20 @@ class AutoRouter(CustomLogger):
             if model.startswith("ollama/"):
                 model = model[7:]
 
-            if hasattr(response, "usage"):
-                input_tokens = getattr(response.usage, "prompt_tokens", 0) or 0
-                output_tokens = getattr(response.usage, "completion_tokens", 0) or 0
+            # Response can be a dict (Anthropic format) or ModelResponse object
+            usage = None
+            if isinstance(response, dict):
+                usage = response.get("usage")
+            elif hasattr(response, "usage") and response.usage is not None:
+                usage = response.usage
+
+            if usage is not None:
+                if isinstance(usage, dict):
+                    input_tokens = usage.get("prompt_tokens") or usage.get("input_tokens") or 0
+                    output_tokens = usage.get("completion_tokens") or usage.get("output_tokens") or 0
+                else:
+                    input_tokens = getattr(usage, "prompt_tokens", None) or getattr(usage, "input_tokens", None) or 0
+                    output_tokens = getattr(usage, "completion_tokens", None) or getattr(usage, "output_tokens", None) or 0
             else:
                 input_tokens = 0
                 output_tokens = 0

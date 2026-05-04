@@ -86,7 +86,7 @@ $env:PYTHONIOENCODING = "utf-8"
 $litellmExe = Join-Path $venvPath "Scripts\litellm.exe"
 
 $proxyJob = Start-Process -FilePath $litellmExe -ArgumentList @(
-    "--config", $proxyConfig,
+    "--config", (Resolve-Path $proxyConfig).Path,
     "--port", $proxyPort,
     "--host", "127.0.0.1"
 ) -WorkingDirectory $PSScriptRoot -RedirectStandardOutput $proxyLogOut -RedirectStandardError $proxyLogErr -WindowStyle Hidden -PassThru
