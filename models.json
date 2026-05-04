@@ -1,0 +1,36 @@
+{
+  "models": [
+    {
+      "name": "deepseek-v4-pro:cloud",
+      "label": "Architecture & Complex Decisions",
+      "description": "Best for planning, architecture, and complex reasoning tasks. Most capable but slower.",
+      "classification": "planning",
+      "quality_score": 10,
+      "speed_score": 5
+    },
+    {
+      "name": "deepseek-v4-flash:cloud",
+      "label": "Reasoning & Cheap Loops",
+      "description": "Fast reasoning model for general tasks and quick iterations. Good balance.",
+      "classification": "default",
+      "quality_score": 8,
+      "speed_score": 9
+    },
+    {
+      "name": "kimi-k2.6:cloud",
+      "label": "Implementation & Coding",
+      "description": "Best for coding, implementation, and step-by-step execution.",
+      "classification": "code",
+      "quality_score": 8,
+      "speed_score": 7
+    },
+    {
+      "name": "glm-5.1:cloud",
+      "label": "Quick Lookups & Stability",
+      "description": "Fast and efficient for exploration, quick questions, and stability fallback.",
+      "classification": "lookup",
+      "quality_score": 6,
+      "speed_score": 10
+    }
+  ]
+}

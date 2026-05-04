@@ -1,0 +1,39 @@
+model_list:
+  - model_name: kimi-k2.6:cloud
+    litellm_params:
+      model: ollama/kimi-k2.6:cloud
+      api_base: http://localhost:11434
+      timeout: 120
+
+  - model_name: glm-5.1:cloud
+    litellm_params:
+      model: ollama/glm-5.1:cloud
+      api_base: http://localhost:11434
+      timeout: 60
+
+  - model_name: deepseek-v4-pro:cloud
+    litellm_params:
+      model: ollama/deepseek-v4-pro:cloud
+      api_base: http://localhost:11434
+      timeout: 180
+
+  - model_name: deepseek-v4-flash:cloud
+    litellm_params:
+      model: ollama/deepseek-v4-flash:cloud
+      api_base: http://localhost:11434
+      timeout: 90
+
+router_settings:
+  timeout: 120
+  num_retries: 2
+  allowed_fails: 3
+  cooldown_time: 30
+
+litellm_settings:
+  callbacks:
+    - smart_router.litellm_callback
+  drop_params: true
+
+general_settings:
+  master_key: sk-smart-router
+  proxy_batch_write_at: 10
