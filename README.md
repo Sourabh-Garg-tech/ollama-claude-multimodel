@@ -1,15 +1,10 @@
 # Multi-Model LLM Router
 
-Token-efficient LLM routing via Ollama Cloud. Two paths:
+Use Claude Code with Ollama Cloud models, auto-switching to the best model for each request.
 
-1. **Auto-switch proxy** (primary) — Claude Code talks to a LiteLLM proxy that auto-routes each request to the best model.
-2. **Programmatic pipeline** (secondary) — `python -m router "task"` runs Plan->Execute->Validate->Escalate->Revalidate.
+## How It Works
 
-## Architecture
-
-### Auto-Switch Proxy (Primary Path)
-
-Claude Code sends requests to the LiteLLM proxy on `localhost:4000`. The proxy inspects each message and routes to the best model:
+Claude Code sends requests to a LiteLLM proxy on `localhost:4000`. The proxy inspects each message and routes to the best model:
 
 ```
 Claude Code -> LiteLLM Proxy (:4000) -> Ollama Cloud
@@ -20,9 +15,9 @@ Claude Code -> LiteLLM Proxy (:4000) -> Ollama Cloud
                     +-- Tool results, default -> V4 Flash
 ```
 
-Budget tracking is enforced at the proxy level — low budget downgrades executor to validator, critical budget pauses requests.
+This means every request automatically gets the right model — no manual switching, no wasted tokens on overkill models.
 
-### Pipeline Path (Secondary)
+### Programmatic Pipeline (Secondary)
 
 ```
 Task --> Plan (V4 Pro) --> Execute (V4 Flash) --> Validate (GLM-5.1)
@@ -58,7 +53,7 @@ ollama-claude-multimodel/
 ├── launcher.ps1              # GUI launcher (dark theme, pre-flight checks, routing preview)
 ├── launch-claude.ps1         # Start proxy + launch Claude CLI
 ├── Claude Launcher.bat       # Double-click shortcut to launcher.ps1
-├── proxy_callbacks.py        # LiteLLM auto-routing callback + budget enforcement
+├── proxy_callbacks.py        # LiteLLM auto-routing callback (optional budget enforcement)
 ├── proxy_config.yaml         # LiteLLM proxy configuration
 ├── models.json               # Model metadata for GUI
 ├── setup.ps1                 # Environment setup
@@ -95,7 +90,7 @@ python -m venv .venv
 ### Launch
 
 ```powershell
-# GUI launcher (Windows) — pick model or Auto, with pre-flight checks and budget display
+# GUI launcher (Windows) — pick model or Auto
 .\Claude Launcher.bat
 
 # Or directly:
@@ -104,7 +99,6 @@ python -m venv .venv
 
 The GUI launcher remembers your last 10 project folders and shows:
 - Ollama and proxy status (green/red indicators)
-- Daily token budget with progress bars
 - Routing preview (type a message, see which model handles it)
 
 ### Programmatic Usage
@@ -120,9 +114,20 @@ print(result["cost"])     # Total token cost
 
 ## Configuration
 
-### Daily Token Budget
+### Auto-Routing Rules
 
-Budget is enforced in `proxy_callbacks.py` (DAILY_INPUT / DAILY_OUTPUT constants). When budget is low (80%+), executor requests downgrade to GLM-5.1. When critical (95%+), requests are paused.
+Routing logic lives in `proxy_callbacks.py`. The `_classify()` function checks messages in order:
+
+1. **Tool results** -> Executor (V4 Flash)
+2. **Short questions** (<200 chars, ends with `?`) -> Validator (GLM-5.1)
+3. **Planning keywords** (architecture, design, strategy, etc.) -> Planner (V4 Pro)
+4. **Code signals** (file extensions, code keywords, code blocks) -> Coder (Kimi K2.6)
+5. **Long + analytical** (>=2000 chars + analytical keywords) -> Planner (V4 Pro)
+6. **Everything else** -> Executor (V4 Flash)
+
+### Budget (Optional, Off by Default)
+
+Set `BUDGET_ENABLED = True` in `proxy_callbacks.py` to enforce daily token limits. When enabled: low budget (80%+) downgrades executor to validator, critical budget (95%+) pauses requests.
 
 ### LiteLLM Proxy
 

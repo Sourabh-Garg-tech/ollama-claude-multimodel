@@ -55,6 +55,7 @@ ROLE_TO_MODEL = {
     "validator": "glm-5.1:cloud",
 }
 
+BUDGET_ENABLED = False
 DAILY_INPUT = 100_000
 DAILY_OUTPUT = 200_000
 
@@ -147,28 +148,26 @@ class AutoRouter(CustomLogger):
     ) -> dict:
         """Route each request to the best model based on content."""
         try:
-            # Budget check — reject on critical
-            budget_status = _check_budget()
-            if budget_status == "critical":
-                raise Exception("Daily token budget exhausted — requests paused until midnight reset")
+            # Budget check (only when enabled)
+            if BUDGET_ENABLED:
+                budget_status = _check_budget()
+                if budget_status == "critical":
+                    raise Exception("Daily token budget exhausted — requests paused until midnight reset")
 
-            messages = data.get("messages", [])
-            role = _classify(messages)
+                # Downgrade executor to validator when budget is low
+                messages = data.get("messages", [])
+                role = _classify(messages)
+                if budget_status == "low" and role == "executor":
+                    role = "validator"
 
-            # Downgrade executor to validator when budget is low
-            if budget_status == "low" and role == "executor":
-                role = "validator"
+                logger.info("Budget %s, route=%s", budget_status, role)
+            else:
+                messages = data.get("messages", [])
+                role = _classify(messages)
 
             selected = ROLE_TO_MODEL[role]
             data["model"] = selected
             data["_route"] = role
-
-            if budget_status != "ok":
-                logger.warning("Budget %s (%.0f%% used), route=%s -> %s",
-                                budget_status,
-                                max(_load_budget()["input_tokens"] / DAILY_INPUT,
-                                    _load_budget()["output_tokens"] / DAILY_OUTPUT) * 100,
-                                role, selected)
         except Exception as e:
             logger.error("Routing failed: %s, falling back to V4 Flash", e)
             data["model"] = "deepseek-v4-flash:cloud"
@@ -181,7 +180,7 @@ class AutoRouter(CustomLogger):
         user_api_key_dict: Any,
         response,
     ):
-        """Log usage and update budget after each successful call."""
+        """Log usage after each successful call."""
         try:
             model = data.get("model", "unknown")
             if model.startswith("ollama/"):
@@ -205,11 +204,14 @@ class AutoRouter(CustomLogger):
                 input_tokens = 0
                 output_tokens = 0
 
-            state = _load_budget()
-            state["input_tokens"] += input_tokens
-            state["output_tokens"] += output_tokens
-            _save_budget(state)
+            # Update budget only when enabled
+            if BUDGET_ENABLED:
+                state = _load_budget()
+                state["input_tokens"] += input_tokens
+                state["output_tokens"] += output_tokens
+                _save_budget(state)
 
+            # Always log to CSV for observability
             if not _LOG_PATH.exists():
                 with open(_LOG_PATH, "w", newline="", encoding="utf-8") as f:
                     writer = csv.writer(f)

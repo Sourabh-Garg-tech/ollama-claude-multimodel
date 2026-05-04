@@ -5,7 +5,6 @@ Add-Type -AssemblyName System.Drawing
 # --- Config ---
 $scriptPath = Join-Path $PSScriptRoot "launch-claude.ps1"
 $modelsPath = Join-Path $PSScriptRoot "models.json"
-$budgetPath = Join-Path $PSScriptRoot "logs\budget-state.json"
 $historyFile = "$env:USERPROFILE\.claude_mm_history.txt"
 $maxHistory = 10
 
@@ -36,16 +35,6 @@ function Test-Proxy {
         $null = Invoke-WebRequest -Uri "http://localhost:4000/health/liveliness" -Method GET -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
         return $true
     } catch { return $false }
-}
-
-function Get-BudgetInfo {
-    if (Test-Path $budgetPath) {
-        try {
-            $b = Get-Content $budgetPath -Raw | ConvertFrom-Json
-            return @{ input = $b.input_tokens; output = $b.output_tokens; date = $b.date }
-        } catch {}
-    }
-    return @{ input = 0; output = 0; date = (Get-Date -Format "yyyy-MM-dd") }
 }
 
 # --- Routing preview logic ---
@@ -95,7 +84,7 @@ $btnColor      = [System.Drawing.Color]::FromArgb(56, 189, 248)
 # --- Form ---
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Multi-Model Router"
-$form.Size = New-Object System.Drawing.Size(580, 700)
+$form.Size = New-Object System.Drawing.Size(580, 620)
 $form.StartPosition = "CenterScreen"
 $form.TopMost = $true
 $form.FormBorderStyle = "FixedDialog"
@@ -180,33 +169,26 @@ $y += 8
 
 # --- Status indicators ---
 $statusPanel = New-Object System.Windows.Forms.Panel
-$statusPanel.Size = New-Object System.Drawing.Size(540, 28)
+$statusPanel.Size = New-Object System.Drawing.Size(540, 24)
 $statusPanel.Location = New-Object System.Drawing.Point(20, $y)
 $statusPanel.BackColor = [System.Drawing.Color]::Transparent
 $null = $form.Controls.Add($statusPanel)
 
 $ollamaStatus = New-Object System.Windows.Forms.Label
-$ollamaStatus.Location = New-Object System.Drawing.Point(0, 4)
+$ollamaStatus.Location = New-Object System.Drawing.Point(0, 2)
 $ollamaStatus.AutoSize = $true
 $ollamaStatus.Font = New-Object System.Drawing.Font("Consolas", 9)
 $null = $statusPanel.Controls.Add($ollamaStatus)
 
 $proxyStatus = New-Object System.Windows.Forms.Label
-$proxyStatus.Location = New-Object System.Drawing.Point(200, 4)
+$proxyStatus.Location = New-Object System.Drawing.Point(200, 2)
 $proxyStatus.AutoSize = $true
 $proxyStatus.Font = New-Object System.Drawing.Font("Consolas", 9)
 $null = $statusPanel.Controls.Add($proxyStatus)
 
-$budgetStatus = New-Object System.Windows.Forms.Label
-$budgetStatus.Location = New-Object System.Drawing.Point(380, 4)
-$budgetStatus.AutoSize = $true
-$budgetStatus.Font = New-Object System.Drawing.Font("Consolas", 9)
-$null = $statusPanel.Controls.Add($budgetStatus)
-
 # Run checks
 $ollamaOk = Test-Ollama
 $proxyOk = Test-Proxy
-$budgetInfo = Get-BudgetInfo
 
 if ($ollamaOk) { $ollamaStatus.Text = "Ollama: Running"; $ollamaStatus.ForeColor = $greenColor }
 else { $ollamaStatus.Text = "Ollama: Down"; $ollamaStatus.ForeColor = $redColor }
@@ -214,18 +196,7 @@ else { $ollamaStatus.Text = "Ollama: Down"; $ollamaStatus.ForeColor = $redColor 
 if ($proxyOk) { $proxyStatus.Text = "Proxy: Ready"; $proxyStatus.ForeColor = $greenColor }
 else { $proxyStatus.Text = "Proxy: Off"; $proxyStatus.ForeColor = $yellowColor }
 
-$inputPct = [math]::Round(($budgetInfo.input / 100000) * 100, 1)
-$outputPct = [math]::Round(($budgetInfo.output / 200000) * 100, 1)
-$maxPct = [math]::Max($inputPct, $outputPct)
-
-if ($maxPct -ge 95) { $budgetLabel = "CRITICAL"; $budgetStatus.ForeColor = $redColor }
-elseif ($maxPct -ge 80) { $budgetLabel = "LOW"; $budgetStatus.ForeColor = $yellowColor }
-else { $budgetLabel = "OK"; $budgetStatus.ForeColor = $greenColor }
-
-$maxPctStr = [string]$maxPct + "%"
-$budgetStatus.Text = "Budget: $budgetLabel ($maxPctStr)"
-
-$y += 36
+$y += 32
 
 # --- Separator ---
 $sep2 = New-Object System.Windows.Forms.Panel
@@ -407,65 +378,6 @@ $previewInput.Add_KeyDown({
 })
 
 $y += 56
-
-# --- Budget Detail ---
-$budgetPanel = New-Object System.Windows.Forms.Panel
-$budgetPanel.Size = New-Object System.Drawing.Size(540, 34)
-$budgetPanel.Location = New-Object System.Drawing.Point(20, $y)
-$budgetPanel.BackColor = [System.Drawing.Color]::FromArgb(30, 30, 34)
-$null = $form.Controls.Add($budgetPanel)
-
-$inputBar = New-Object System.Windows.Forms.ProgressBar
-$inputBar.Size = New-Object System.Drawing.Size(220, 14)
-$inputBar.Location = New-Object System.Drawing.Point(90, 3)
-$inputBar.Minimum = 0
-$inputBar.Maximum = 100
-$inputBar.Value = [math]::Min([int]$inputPct, 100)
-$inputBar.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
-$null = $budgetPanel.Controls.Add($inputBar)
-
-$inputBarLbl = New-Object System.Windows.Forms.Label
-$inputBarLbl.Text = "Input"
-$inputBarLbl.Location = New-Object System.Drawing.Point(4, 2)
-$inputBarLbl.Size = New-Object System.Drawing.Size(50, 16)
-$inputBarLbl.Font = New-Object System.Drawing.Font("Consolas", 8)
-$inputBarLbl.ForeColor = $dimColor
-$null = $budgetPanel.Controls.Add($inputBarLbl)
-
-$inputVal = New-Object System.Windows.Forms.Label
-$inputVal.Text = "$($budgetInfo.input) / 100K"
-$inputVal.Location = New-Object System.Drawing.Point(320, 2)
-$inputVal.Size = New-Object System.Drawing.Size(120, 16)
-$inputVal.Font = New-Object System.Drawing.Font("Consolas", 8)
-$inputVal.ForeColor = $dimColor
-$null = $budgetPanel.Controls.Add($inputVal)
-
-$outputBar = New-Object System.Windows.Forms.ProgressBar
-$outputBar.Size = New-Object System.Drawing.Size(220, 14)
-$outputBar.Location = New-Object System.Drawing.Point(90, 19)
-$outputBar.Minimum = 0
-$outputBar.Maximum = 100
-$outputBar.Value = [math]::Min([int]$outputPct, 100)
-$outputBar.Style = [System.Windows.Forms.ProgressBarStyle]::Continuous
-$null = $budgetPanel.Controls.Add($outputBar)
-
-$outputBarLbl = New-Object System.Windows.Forms.Label
-$outputBarLbl.Text = "Output"
-$outputBarLbl.Location = New-Object System.Drawing.Point(4, 18)
-$outputBarLbl.Size = New-Object System.Drawing.Size(50, 16)
-$outputBarLbl.Font = New-Object System.Drawing.Font("Consolas", 8)
-$outputBarLbl.ForeColor = $dimColor
-$null = $budgetPanel.Controls.Add($outputBarLbl)
-
-$outputVal = New-Object System.Windows.Forms.Label
-$outputVal.Text = "$($budgetInfo.output) / 200K"
-$outputVal.Location = New-Object System.Drawing.Point(320, 18)
-$outputVal.Size = New-Object System.Drawing.Size(120, 16)
-$outputVal.Font = New-Object System.Drawing.Font("Consolas", 8)
-$outputVal.ForeColor = $dimColor
-$null = $budgetPanel.Controls.Add($outputVal)
-
-$y += 44
 
 # --- Launch Button ---
 $launchBtn = New-Object System.Windows.Forms.Button
