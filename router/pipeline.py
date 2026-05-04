@@ -1,14 +1,24 @@
 import litellm
 from .models import MODELS, estimate_cost
+from .budget import BudgetTracker
 
 
 VALIDATE_PROMPT = "Check correctness of this output. Reply with only PASS or FAIL followed by a brief reason.\n\n## Task\n{task}\n\n## Output\n{output}"
 
+# On low budget, executor downgrades to the cheapest model
+BUDGET_DOWNGRADE = {"executor": "validator"}
 
-def call(role: str, prompt: str) -> dict:
+
+def call(role: str, prompt: str, budget: BudgetTracker | None = None) -> dict:
     """Call a model by role. Returns content, token counts, cost."""
+    effective_role = role
+    if budget and budget.status() == "low" and role in BUDGET_DOWNGRADE:
+        effective_role = BUDGET_DOWNGRADE[role]
+    if budget and budget.status() == "critical":
+        raise CriticalBudgetError("Daily token budget is critical. Pausing requests.")
+
     response = litellm.completion(
-        model=MODELS[role],
+        model=MODELS[effective_role],
         messages=[{"role": "user", "content": prompt}],
         timeout=120,
     )
@@ -16,27 +26,36 @@ def call(role: str, prompt: str) -> dict:
     usage = response.usage
     input_tokens = usage.prompt_tokens
     output_tokens = usage.completion_tokens
+
+    if budget:
+        budget.add_usage(input_tokens, output_tokens)
+
     return {
         "content": content,
         "input_tokens": input_tokens,
         "output_tokens": output_tokens,
-        "cost": estimate_cost(role, input_tokens, output_tokens),
+        "cost": estimate_cost(effective_role, input_tokens, output_tokens),
+        "role_used": effective_role,
     }
 
 
-def run_pipeline(task: str) -> dict:
+class CriticalBudgetError(Exception):
+    pass
+
+
+def run_pipeline(task: str, budget: BudgetTracker | None = None) -> dict:
     """Plan -> Execute -> Validate -> Escalate -> Re-validate."""
 
     # Step 1: Plan
-    plan = call("planner", task)
+    plan = call("planner", task, budget=budget)
 
     # Step 2: Execute
     execute_prompt = f"## Plan\n{plan['content']}\n\n## Task\n{task}\n\nExecute the plan step by step."
-    result = call("executor", execute_prompt)
+    result = call("executor", execute_prompt, budget=budget)
 
     # Step 3: Validate
     validate_prompt = VALIDATE_PROMPT.format(task=task, output=result["content"])
-    validation = call("validator", validate_prompt)
+    validation = call("validator", validate_prompt, budget=budget)
 
     if validation["content"].strip().upper().startswith("PASS"):
         return {
@@ -48,11 +67,11 @@ def run_pipeline(task: str) -> dict:
 
     # Step 4: Escalate
     escalate_prompt = f"## Plan\n{plan['content']}\n\n## Task\n{task}\n\nThe initial execution failed validation. Fix it properly."
-    escalated = call("coder", escalate_prompt)
+    escalated = call("coder", escalate_prompt, budget=budget)
 
     # Step 5: Re-validate
     revalidate_prompt = VALIDATE_PROMPT.format(task=task, output=escalated["content"])
-    revalidation = call("validator", revalidate_prompt)
+    revalidation = call("validator", revalidate_prompt, budget=budget)
 
     passed = revalidation["content"].strip().upper().startswith("PASS")
     return {
