@@ -25,6 +25,7 @@ $lastPath = if ($history.Count -gt 0) { $history[0] } else { "" }
 # --- Colors ---
 $bgColor = [System.Drawing.Color]::FromArgb(30, 30, 30)
 $cardColor = [System.Drawing.Color]::FromArgb(45, 45, 45)
+$autoColor = [System.Drawing.Color]::FromArgb(0, 77, 64)
 $textColor = [System.Drawing.Color]::White
 $dimColor = [System.Drawing.Color]::FromArgb(160, 160, 160)
 $accentColor = [System.Drawing.Color]::FromArgb(0, 180, 216)
@@ -34,7 +35,7 @@ $borderColor = [System.Drawing.Color]::FromArgb(70, 70, 70)
 # --- Form ---
 $form = New-Object System.Windows.Forms.Form
 $form.Text = "Multi-Model Router"
-$form.Size = New-Object System.Drawing.Size(560, 480)
+$form.Size = New-Object System.Drawing.Size(560, 500)
 $form.StartPosition = "CenterScreen"
 $form.TopMost = $true
 $form.FormBorderStyle = "FixedDialog"
@@ -44,7 +45,7 @@ $form.ForeColor = $textColor
 
 # --- Header ---
 $header = New-Object System.Windows.Forms.Label
-$header.Text = "Plan  >  Execute  >  Validate  >  Escalate  >  Re-validate"
+$header.Text = "Auto-switch: picks the best model per request"
 $header.Location = New-Object System.Drawing.Point(15, 12)
 $header.Size = New-Object System.Drawing.Size(530, 22)
 $header.ForeColor = $accentColor
@@ -96,12 +97,11 @@ $null = $form.Controls.Add($sep)
 # --- Role Cards ---
 $roleY = 104
 $roleCards = @{}
-$selectedRole = "executor"
+$selectedRole = "auto"
 
 foreach ($r in $roles) {
     $card = New-Object System.Windows.Forms.Panel
     $card.Size = New-Object System.Drawing.Size(250, 70)
-    $card.Location = New-Object System.Drawing.Point(15, $roleY)
     $card.BackColor = $cardColor
     $card.BorderStyle = [System.Windows.Forms.BorderStyle]::None
     $card.Tag = $r.role
@@ -123,62 +123,65 @@ foreach ($r in $roles) {
     $desc.Tag = "desc"
     $null = $card.Controls.Add($desc)
 
-    $cost = New-Object System.Windows.Forms.Label
-    $cost.Text = "$($r.cost)  |  $($r.speed) tok/s"
-    $cost.Location = New-Object System.Drawing.Point(10, 54)
-    $cost.Size = New-Object System.Drawing.Size(230, 14)
-    $cost.Font = New-Object System.Drawing.Font("Consolas", 8)
-    $cost.ForeColor = $greenColor
-    $cost.Tag = "cost"
-    $null = $card.Controls.Add($cost)
+    if ($r.role -eq "auto") {
+        $cost = New-Object System.Windows.Forms.Label
+        $cost.Text = "Routes automatically by request type"
+        $cost.Location = New-Object System.Drawing.Point(10, 54)
+        $cost.Size = New-Object System.Drawing.Size(230, 14)
+        $cost.Font = New-Object System.Drawing.Font("Consolas", 8)
+        $cost.ForeColor = $greenColor
+        $cost.Tag = "cost"
+        $null = $card.Controls.Add($cost)
+    } else {
+        $cost = New-Object System.Windows.Forms.Label
+        $cost.Text = "$($r.cost)  |  $($r.speed) tok/s"
+        $cost.Location = New-Object System.Drawing.Point(10, 54)
+        $cost.Size = New-Object System.Drawing.Size(230, 14)
+        $cost.Font = New-Object System.Drawing.Font("Consolas", 8)
+        $cost.ForeColor = $greenColor
+        $cost.Tag = "cost"
+        $null = $card.Controls.Add($cost)
+    }
 
     $card.Add_Click({
         $script:selectedRole = $this.Tag
         foreach ($c in $roleCards.Values) {
             $c.BackColor = $cardColor
         }
-        $this.BackColor = [System.Drawing.Color]::FromArgb(0, 100, 120)
+        $this.BackColor = if ($this.Tag -eq "auto") { $autoColor } else { [System.Drawing.Color]::FromArgb(0, 100, 120) }
     }.GetNewClosure())
 
     $null = $form.Controls.Add($card)
     $roleCards[$r.role] = $card
-
-    # Second column
-    $r2 = $roles | Where-Object { $_.role -eq $r.role }
-    $nextIdx = [array]::IndexOf($roles, $r)
-
-    if ($nextIdx % 2 -eq 1) {
-        # This is right column - move it right
-        $card.Location = New-Object System.Drawing.Point(285, $roleY - 76)
-        $roleY += 2  # tiny increment since we handle layout in pairs
-    }
 }
 
-# Fix layout: 2 columns, 2 rows
-if ($roles.Count -ge 4) {
-    $roleCards[$roles[0].role].Location = New-Object System.Drawing.Point(15, 104)
-    $roleCards[$roles[1].role].Location = New-Object System.Drawing.Point(285, 104)
-    $roleCards[$roles[2].role].Location = New-Object System.Drawing.Point(15, 182)
-    $roleCards[$roles[3].role].Location = New-Object System.Drawing.Point(285, 182)
-}
+# Layout: Auto card full width on top, then 2x2 grid for manual roles
+$roleCards["auto"].Location = New-Object System.Drawing.Point(15, 104)
+$roleCards["auto"].Size = New-Object System.Drawing.Size(520, 70)
 
-# Default selection
-$roleCards["executor"].BackColor = [System.Drawing.Color]::FromArgb(0, 100, 120)
+$manualY = 182
+$roleCards["planner"].Location = New-Object System.Drawing.Point(15, $manualY)
+$roleCards["executor"].Location = New-Object System.Drawing.Point(285, $manualY)
+$roleCards["coder"].Location = New-Object System.Drawing.Point(15, $manualY + 78)
+$roleCards["validator"].Location = New-Object System.Drawing.Point(285, $manualY + 78)
 
-# --- Pipeline Info ---
+# Default: Auto selected
+$roleCards["auto"].BackColor = $autoColor
+
+# --- Info Label ---
 $infoLabel = New-Object System.Windows.Forms.Label
-$infoLabel.Text = "The pipeline automatically routes through all 4 roles." + "`n" + `
-    "Pick the STARTING model below. Executor is recommended for most tasks."
-$infoLabel.Location = New-Object System.Drawing.Point(15, 264)
-$infoLabel.Size = New-Object System.Drawing.Size(520, 34)
-$infoLabel.ForeColor = $dimColor
+$infoLabel.Text = "Auto: questions -> GLM, code -> Kimi, planning -> V4 Pro, else -> V4 Flash"
+$infoLabel.Location = New-Object System.Drawing.Point(15, 340)
+$infoLabel.Size = New-Object System.Drawing.Size(520, 18)
+$infoLabel.ForeColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
+$infoLabel.Font = New-Object System.Drawing.Font("Consolas", 8)
 $null = $form.Controls.Add($infoLabel)
 
 # --- Launch Button ---
 $launch = New-Object System.Windows.Forms.Button
 $launch.Text = "Launch"
 $launch.Size = New-Object System.Drawing.Size(520, 40)
-$launch.Location = New-Object System.Drawing.Point(15, 310)
+$launch.Location = New-Object System.Drawing.Point(15, 365)
 $launch.FlatStyle = "Flat"
 $launch.BackColor = $accentColor
 $launch.ForeColor = $textColor
@@ -225,13 +228,13 @@ $null = $form.Controls.Add($launch)
 
 # --- Status Bar ---
 $statusBar = New-Object System.Windows.Forms.Label
-$statusBar.Text = "Ollama Cloud  |  Pipeline v1  |  LiteLLM Proxy :4000"
-$statusBar.Location = New-Object System.Drawing.Point(15, 362)
+$statusBar.Text = "Ollama Cloud  |  Auto-switch enabled  |  LiteLLM Proxy :4000"
+$statusBar.Location = New-Object System.Drawing.Point(15, 415)
 $statusBar.Size = New-Object System.Drawing.Size(520, 18)
 $statusBar.ForeColor = [System.Drawing.Color]::FromArgb(100, 100, 100)
 $statusBar.Font = New-Object System.Drawing.Font("Consolas", 8)
 $null = $form.Controls.Add($statusBar)
 
 # --- Run ---
-$form.Size = New-Object System.Drawing.Size(560, 420)
+$form.Size = New-Object System.Drawing.Size(560, 470)
 [System.Windows.Forms.Application]::Run($form)

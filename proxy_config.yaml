@@ -31,7 +31,7 @@ router_settings:
 
 litellm_settings:
   callbacks:
-    - proxy_callbacks.litellm_logging_callback
+    - proxy_callbacks.proxy_handler_instance
   drop_params: true
 
 general_settings:

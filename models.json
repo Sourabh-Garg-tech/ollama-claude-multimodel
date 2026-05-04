@@ -1,6 +1,15 @@
 {
   "roles": [
     {
+      "role": "auto",
+      "model": "deepseek-v4-flash:cloud",
+      "label": "Auto",
+      "tag": "auto-route",
+      "description": "Automatically picks the best model for each request. Recommended.",
+      "cost": "varies",
+      "speed": 0
+    },
+    {
       "role": "planner",
       "model": "deepseek-v4-pro:cloud",
       "label": "Planner",
@@ -23,7 +32,7 @@
       "model": "kimi-k2.6:cloud",
       "label": "Coder",
       "tag": "kimi-k2.6",
-      "description": "Coding fallback. Best coding quality. Used when executor fails validation.",
+      "description": "Best coding quality. Use when writing or debugging code.",
       "cost": "$1.15/M in",
       "speed": 139
     },
@@ -32,7 +41,7 @@
       "model": "glm-5.1:cloud",
       "label": "Validator",
       "tag": "glm-5.1",
-      "description": "Output validation & stability. Checks every result before use.",
+      "description": "Quick answers, lookups, stability fallback. Cheapest.",
       "cost": "$1.66/M in",
       "speed": 150
     }
