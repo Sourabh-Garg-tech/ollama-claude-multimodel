@@ -89,12 +89,11 @@ $litellmExe = Join-Path $venvPath "Scripts\litellm.exe"
 $proxyJob = Start-Process -FilePath $litellmExe -ArgumentList @(
     "--config", $proxyConfig,
     "--port", $proxyPort,
-    "--host", "127.0.0.1",
-    "--detailed_debug"
+    "--host", "127.0.0.1"
 ) -WorkingDirectory $PSScriptRoot -RedirectStandardOutput $proxyLogOut -RedirectStandardError $proxyLogErr -WindowStyle Hidden -PassThru
 
 # Wait for proxy to be ready
-$maxWait = 30
+$maxWait = 60
 $waited = 0
 while ($waited -lt $maxWait) {
     try {
