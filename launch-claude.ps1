@@ -14,9 +14,9 @@ if (-not $Model) {
     exit 1
 }
 
-Write-Host "Starting Smart Router + Claude Code with $Model ($ModelLabel)..." -ForegroundColor Cyan
+Write-Host "Starting Pipeline + Claude Code with $Model ($ModelLabel)..." -ForegroundColor Cyan
 
-# --- Smart Router Config ---
+# --- Config ---
 $proxyPort = 4000
 $proxyUrl = "http://localhost:$proxyPort"
 $proxyConfig = Join-Path $PSScriptRoot "proxy_config.yaml"
@@ -28,7 +28,7 @@ $pythonCmd = "python"
 if (Get-Command "py" -ErrorAction SilentlyContinue) {
     $pythonCmd = "py"
 } elseif (-not (Get-Command "python" -ErrorAction SilentlyContinue)) {
-    Write-Host "[ERROR] Python is required for the smart router. Install Python 3.10+ and try again." -ForegroundColor Red
+    Write-Host "[ERROR] Python is required. Install Python 3.10+ and try again." -ForegroundColor Red
     exit 1
 }
 
@@ -82,9 +82,11 @@ $proxyLogErr = Join-Path $PSScriptRoot "logs\proxy-err.log"
 $null = New-Item -ItemType Directory -Path (Split-Path $proxyLogOut) -Force -ErrorAction SilentlyContinue
 
 $env:PYTHONPATH = $PSScriptRoot
+$env:PYTHONIOENCODING = "utf-8"
 
-$proxyJob = Start-Process -FilePath $pythonExe -ArgumentList @(
-    "-m", "litellm",
+$litellmExe = Join-Path $venvPath "Scripts\litellm.exe"
+
+$proxyJob = Start-Process -FilePath $litellmExe -ArgumentList @(
     "--config", $proxyConfig,
     "--port", $proxyPort,
     "--host", "127.0.0.1",

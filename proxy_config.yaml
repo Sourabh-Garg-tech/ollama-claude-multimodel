@@ -30,8 +30,6 @@ router_settings:
   cooldown_time: 30
 
 litellm_settings:
-  callbacks:
-    - router.callback
   drop_params: true
 
 general_settings:
