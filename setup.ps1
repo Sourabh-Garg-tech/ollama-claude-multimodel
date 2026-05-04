@@ -1,5 +1,5 @@
 #requires -Version 5.1
-# Setup script for Smart Router
+# Setup script for Multi-Model Router
 
 $venvPath = Join-Path $PSScriptRoot ".venv"
 

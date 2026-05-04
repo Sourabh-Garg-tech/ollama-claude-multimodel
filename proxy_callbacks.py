@@ -122,7 +122,7 @@ def _save_budget(state):
 
 
 def _check_budget():
-    """Return budget status: 'ok', 'low', or 'critical'."""
+    """Return budget status: 'healthy', 'low', or 'critical'."""
     state = _load_budget()
     input_pct = state["input_tokens"] / DAILY_INPUT if DAILY_INPUT else 0
     output_pct = state["output_tokens"] / DAILY_OUTPUT if DAILY_OUTPUT else 0
@@ -131,7 +131,7 @@ def _check_budget():
         return "critical"
     if max_pct >= 0.80:
         return "low"
-    return "ok"
+    return "healthy"
 
 
 # --- CustomLogger for LiteLLM Proxy ---

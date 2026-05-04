@@ -109,14 +109,6 @@ if ($waited -ge $maxWait) {
     Write-Host "[WARNING] Proxy did not become ready within $maxWait seconds. Check logs/proxy.log" -ForegroundColor Yellow
 }
 
-# --- Usage Logging ---
-$logDir = Join-Path (Get-Location) "logs"
-if (-not (Test-Path $logDir)) { $null = New-Item -ItemType Directory -Path $logDir -Force }
-$logFile = Join-Path $logDir "usage.csv"
-if (-not (Test-Path $logFile)) { Set-Content -Path $logFile -Value "Timestamp,Model,Label" -Encoding UTF8 }
-$timestamp = (Get-Date).ToUniversalTime().ToString("o")
-Add-Content -Path $logFile -Value "$timestamp,$Model,$ModelLabel" -Encoding UTF8
-
 # --- Point Claude at the Proxy ---
 $env:ANTHROPIC_BASE_URL = $proxyUrl
 $env:ANTHROPIC_AUTH_TOKEN = "sk-smart-router"
@@ -127,18 +119,8 @@ $env:CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC = "1"
 $env:OLLAMA_KEEP_ALIVE = "30m"
 $env:OLLAMA_NUM_CTX = "65536"
 
-# --- System Prompt ---
-$prompt = @"
-You are Claude, operating as a software engineering assistant.
-
-Rules:
-- Route all tasks through the Plan->Execute->Validate->Escalate pipeline.
-- Invoke all installed skills and plugins automatically whenever they apply.
-- Prefer minimal, concise output. Only change what is necessary. Stop when the task is complete.
-"@
-
 # --- Launch Claude ---
-claude --model $Model --append-system-prompt $prompt
+claude --model $Model
 
 # --- Cleanup: stop proxy on exit ---
 if ($proxyJob -and -not $proxyJob.HasExited) {

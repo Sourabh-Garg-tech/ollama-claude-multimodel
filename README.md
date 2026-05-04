@@ -15,8 +15,6 @@ Claude Code -> LiteLLM Proxy (:4000) -> Ollama Cloud
                     +-- Tool results, default -> V4 Flash
 ```
 
-This means every request automatically gets the right model — no manual switching, no wasted tokens on overkill models.
-
 ### Programmatic Pipeline (Secondary)
 
 ```
@@ -53,19 +51,20 @@ ollama-claude-multimodel/
 ├── launcher.ps1              # GUI launcher (dark theme, pre-flight checks, routing preview)
 ├── launch-claude.ps1         # Start proxy + launch Claude CLI
 ├── Claude Launcher.bat       # Double-click shortcut to launcher.ps1
-├── proxy_callbacks.py        # LiteLLM auto-routing callback (optional budget enforcement)
-├── proxy_config.yaml         # LiteLLM proxy configuration
-├── models.json               # Model metadata for GUI
-├── setup.ps1                 # Environment setup
-├── requirements.txt          # Python dependencies
-├── router/                   # Programmatic pipeline (secondary)
+├── proxy_callbacks.py         # LiteLLM auto-routing callback (optional budget enforcement)
+├── proxy_config.yaml          # LiteLLM proxy configuration
+├── models.json                # Model metadata for GUI
+├── setup.ps1                  # Environment setup
+├── requirements.txt           # Python dependencies
+├── router/                    # Programmatic pipeline (secondary)
 │   ├── __init__.py
-│   ├── __main__.py           # CLI entry: python -m router "task"
-│   ├── models.py             # Model registry + pricing
-│   ├── budget.py             # Daily token budget tracker
-│   └── pipeline.py           # Plan->Execute->Validate->Escalate->Revalidate
+│   ├── __main__.py            # CLI entry: python -m router "task"
+│   ├── models.py              # Model registry + pricing
+│   ├── budget.py              # Daily token budget tracker
+│   └── pipeline.py            # Plan->Execute->Validate->Escalate->Revalidate
 └── tests/
-    └── test_router.py         # Pipeline + budget + model tests
+    ├── test_router.py          # Pipeline + budget + model tests
+    └── test_proxy_callbacks.py # Routing logic + budget status tests
 ```
 
 ## Quick Start
@@ -90,7 +89,7 @@ python -m venv .venv
 ### Launch
 
 ```powershell
-# GUI launcher (Windows) — pick model or Auto
+# GUI launcher (Windows) - pick model or Auto
 .\Claude Launcher.bat
 
 # Or directly:
