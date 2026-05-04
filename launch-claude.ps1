@@ -20,7 +20,7 @@ Write-Host "Starting Smart Router + Claude Code with $Model ($ModelLabel)..." -F
 $proxyPort = 4000
 $proxyUrl = "http://localhost:$proxyPort"
 $proxyConfig = Join-Path $PSScriptRoot "proxy_config.yaml"
-$routerDir = Join-Path $PSScriptRoot "smart_router"
+$routerDir = Join-Path $PSScriptRoot "router"
 $venvPath = Join-Path $PSScriptRoot ".venv"
 
 # --- Check Python / Virtual Env ---
@@ -132,9 +132,8 @@ $prompt = @"
 You are Claude, operating as a software engineering assistant.
 
 Rules:
-- Invoke all installed skills and plugins automatically whenever they apply. Do not ask for permission.
-- Use multiple agents and sub-agents to assign and complete tasks. Agents should coordinate among themselves.
-- Use /obsidian for vault space for documentation and intelligence.
+- Route all tasks through the Plan->Execute->Validate->Escalate pipeline.
+- Invoke all installed skills and plugins automatically whenever they apply.
 - Prefer minimal, concise output. Only change what is necessary. Stop when the task is complete.
 "@
 

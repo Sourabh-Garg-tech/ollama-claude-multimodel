@@ -18,7 +18,6 @@ class BudgetTracker:
             )
         self.state_path = Path(state_path).resolve()
         self.state_path.parent.mkdir(parents=True, exist_ok=True)
-
         self._state = self._load()
 
     def _load(self) -> dict:
@@ -31,11 +30,7 @@ class BudgetTracker:
         return self._fresh_state()
 
     def _fresh_state(self) -> dict:
-        return {
-            "date": time.strftime("%Y-%m-%d"),
-            "input_tokens": 0,
-            "output_tokens": 0,
-        }
+        return {"date": time.strftime("%Y-%m-%d"), "input_tokens": 0, "output_tokens": 0}
 
     def _save(self):
         with open(self.state_path, "w", encoding="utf-8") as f:
@@ -50,7 +45,6 @@ class BudgetTracker:
         input_pct = (self._state["input_tokens"] / self.daily_input_limit) * 100
         output_pct = (self._state["output_tokens"] / self.daily_output_limit) * 100
         max_pct = max(input_pct, output_pct)
-
         if max_pct >= 100 - self.critical_pct:
             return "critical"
         if max_pct >= 100 - self.low_pct:

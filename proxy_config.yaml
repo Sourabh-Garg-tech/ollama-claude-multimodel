@@ -31,7 +31,7 @@ router_settings:
 
 litellm_settings:
   callbacks:
-    - smart_router.litellm_callback
+    - router.callback
   drop_params: true
 
 general_settings:

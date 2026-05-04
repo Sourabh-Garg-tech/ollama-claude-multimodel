@@ -1,0 +1,16 @@
+models:
+  deepseek-v4-pro:cloud:
+    role: planner
+  deepseek-v4-flash:cloud:
+    role: executor
+  kimi-k2.6:cloud:
+    role: coder
+  glm-5.1:cloud:
+    role: validator
+
+budget:
+  daily_input_tokens: 100000
+  daily_output_tokens: 200000
+  hard_stop_on_critical: true
+  low_budget_percent: 20
+  critical_budget_percent: 5
