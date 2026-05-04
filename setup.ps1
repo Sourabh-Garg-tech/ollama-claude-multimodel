@@ -36,6 +36,6 @@ Write-Host "Verifying installation..." -ForegroundColor Cyan
 
 # Run tests
 Write-Host "Running tests..." -ForegroundColor Cyan
-& $pythonExe (Join-Path $PSScriptRoot "test_router.py")
+& $pythonExe -m pytest (Join-Path $PSScriptRoot "tests\test_router.py") -v
 
 Write-Host "`nSetup complete. You can now launch Claude Code via 'Claude Launcher.bat'." -ForegroundColor Green

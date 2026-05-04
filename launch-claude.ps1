@@ -20,7 +20,6 @@ Write-Host "Starting Pipeline + Claude Code with $Model ($ModelLabel)..." -Foreg
 $proxyPort = 4000
 $proxyUrl = "http://localhost:$proxyPort"
 $proxyConfig = Join-Path $PSScriptRoot "proxy_config.yaml"
-$routerDir = Join-Path $PSScriptRoot "router"
 $venvPath = Join-Path $PSScriptRoot ".venv"
 
 # --- Check Python / Virtual Env ---

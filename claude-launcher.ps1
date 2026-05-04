@@ -95,7 +95,6 @@ $sep.BackColor = $borderColor
 $null = $form.Controls.Add($sep)
 
 # --- Role Cards ---
-$roleY = 104
 $roleCards = @{}
 $selectedRole = "auto"
 
