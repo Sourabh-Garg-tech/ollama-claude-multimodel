@@ -154,6 +154,7 @@ $env:OLLAMA_NUM_CTX = "65536"
 | `Claude Launcher.vbs` | Double-click entry point (no cmd.exe flash) |
 | `system_prompt.txt` | Auto-loaded via `--append-system-prompt-file` on every launch |
 | `CLAUDE.md` | Contributor guide and architecture details |
+| `docs/claude-code-config.md` | Full Claude Code configuration reference |
 
 ---
 
