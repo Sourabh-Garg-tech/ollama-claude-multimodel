@@ -312,12 +312,66 @@ Claude Code supports sandboxing for isolated file and network access:
 
 ## Putting It All Together
 
-### Recommended project `.claude/settings.json` for this launcher
+### Settings hierarchy for this project
+
+This project uses three layers of Claude Code settings:
+
+| File | Scope | What goes here |
+|---|---|---|
+| `~/.claude/settings.json` | Global (all projects) | Personal defaults, plugins, UI preferences, broad permissions |
+| `.claude/settings.json` | Project (committed to git) | Team-shared permissions and deny rules |
+| `.claude/settings.local.json` | Project (gitignored) | Personal project overrides, one-time permissions |
+
+### Global settings (`~/.claude/settings.json`)
+
+These apply to every project on your machine:
 
 ```jsonc
 {
   "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "model": "sonnet",
+  "permissions": {
+    "defaultMode": "acceptEdits",
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(ollama *)",
+      "Bash(npm *)",
+      "Bash(npx *)",
+      "Bash(node *)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(curl *)",
+      "WebSearch",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:ollama.com)",
+      "WebFetch(domain:github.com)"
+    ],
+    "deny": [
+      "Bash(rm -rf /)",
+      "Bash(rm -rf ~)"
+    ]
+  },
+  "includeGitInstructions": true,
+  "showTurnDuration": true,
+  "autoUpdatesChannel": "latest",
+  "autoMemoryEnabled": true
+}
+```
 
+Key decisions:
+- **`acceptEdits` mode** — auto-approves file edits and common commands, prompts only for risky operations. Saves significant time compared to `default` mode.
+- **Broad tool allowlist** — `git`, `gh`, `ollama`, `npm`, `npx`, `node`, `python`, `curl` are pre-approved so Claude doesn't ask permission for routine operations.
+- **`deny` blocks** — `rm -rf /` and `rm -rf ~` are always blocked as safety nets.
+- **No env vars here** — Ollama routing is set per-session by the launcher, not globally. This keeps the global config provider-agnostic.
+
+### Project settings (`.claude/settings.json` — committed)
+
+Team-shared rules for this repo:
+
+```jsonc
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
   "permissions": {
     "defaultMode": "acceptEdits",
     "allow": [
@@ -328,11 +382,48 @@ Claude Code supports sandboxing for isolated file and network access:
     ],
     "deny": [
       "Bash(rm -rf /)",
-      "Bash(rm -rf ~)",
-      "Read(./.env)"
+      "Bash(rm -rf ~)"
     ]
-  },
+  }
+}
+```
 
+This is minimal by design — team members inherit their global preferences and override per-project as needed.
+
+### Project local settings (`.claude/settings.local.json` — gitignored)
+
+Personal overrides for this project. This file is NOT committed to git:
+
+```jsonc
+{
+  "permissions": {
+    "allow": [
+      "Bash(git *)",
+      "Bash(gh *)",
+      "Bash(ollama *)",
+      "WebSearch",
+      "WebFetch(domain:docs.anthropic.com)",
+      "WebFetch(domain:github.com)"
+    ]
+  }
+}
+```
+
+Add any project-specific permissions here that you don't want in the shared config (e.g., API test commands, personal tool preferences).
+
+### Using settings.json env vars vs launcher.ps1
+
+The `"env"` block in `settings.json` is an alternative to setting environment variables in `launcher.ps1`. You can use either approach:
+
+| Approach | Pros | Cons |
+|---|---|---|
+| `launcher.ps1` env vars | Set per-launch, GUI workflow, only active when launched via VBS | Must edit PowerShell to change |
+| `settings.json` env block | Always active (even `claude` CLI), survives updates, team-shareable | Always active (even without Ollama running) |
+
+For most users, the launcher is simpler. For teams or power users who run `claude` directly, add the env block to `settings.json`:
+
+```jsonc
+{
   "env": {
     "ANTHROPIC_BASE_URL": "http://localhost:11434",
     "ANTHROPIC_AUTH_TOKEN": "ollama",
@@ -349,41 +440,9 @@ Claude Code supports sandboxing for isolated file and network access:
     "ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES": "effort,xhigh_effort,max_effort,thinking,adaptive_thinking,interleaved_thinking",
     "ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES": "effort,thinking",
     "OLLAMA_NUM_CTX": "65536"
-  },
-
-  "hooks": {
-    "SessionStart": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "curl -sf http://localhost:11434/api/tags > /dev/null && echo 'Ollama: running' || echo 'Ollama: NOT RUNNING'"
-          }
-        ]
-      }
-    ]
   }
 }
 ```
-
-This settings file:
-- Sets `acceptEdits` mode for smoother workflow
-- Pre-approves git, gh, and ollama commands
-- Blocks dangerous deletes and `.env` reads
-- Configures all Ollama environment variables
-- Verifies Ollama is running at session start
-
-### Using settings.json instead of launcher.ps1
-
-The `"env"` block in `settings.json` is an alternative to setting environment variables in `launcher.ps1`. You can use either approach:
-
-| Approach | Pros | Cons |
-|---|---|---|
-| `launcher.ps1` env vars | Set per-launch, GUI workflow, only active when launched via VBS | Must edit PowerShell to change |
-| `settings.json` env block | Always active (even `claude` CLI), survives updates, team-shareable | Always active (even without Ollama running) |
-
-For most users, the launcher is simpler. For teams or power users who run `claude` directly, `settings.json` is more portable.
 
 ---
 
