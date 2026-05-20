@@ -9,16 +9,29 @@ Claude Launcher.vbs          ← double-click entry point
     launcher.ps1              ← PowerShell GUI (WinForms)
         │
         ├── Folder picker + history (last 10)
-        ├── Prereq checks (Ollama, claude CLI)
+        ├── Prereq checks (Ollama, claude CLI, proxy)
         ├── Env vars (routing, models, capabilities)
         └── Start-Process powershell.exe → claude --append-system-prompt-file
                 │
                 ▼
           Claude Code CLI     ← inherits env vars from parent
                 │
-                ▼
-          Ollama Cloud         ← localhost:11434
+                ├── [proxy off]  → localhost:11434 (Ollama direct)
+                │
+                └── [proxy on]  → localhost:11435 (proxy)
+                                      │
+                                      ├── forwards to localhost:11434 (Ollama)
+                                      └── logs to logs/YYYY-MM-DD.jsonl
 ```
+
+### Analytics Proxy (optional)
+
+`proxy/proxy.mjs` is a zero-dependency Node.js reverse proxy that:
+- Listens on `localhost:11435`
+- Forwards all requests to `localhost:11434` (Ollama)
+- Parses `/v1/messages` responses for model name and token counts
+- Logs one JSONL line per request to `logs/YYYY-MM-DD.jsonl`
+- Is fully opt-in — the launcher auto-detects it and falls back to direct Ollama when it's off
 
 ## Key Principles
 
@@ -94,6 +107,10 @@ What each capability enables:
 | `Claude Launcher.vbs` | Double-click entry point (launches PowerShell directly, no cmd.exe) |
 | `system_prompt.txt` | Ingested via `--append-system-prompt-file` on every launch |
 | `CLAUDE.md` | This file — contributor guide |
+| `proxy/proxy.mjs` | Analytics proxy — logs per-model usage to JSONL |
+| `proxy/analytics.mjs` | CLI tool — reads JSONL logs, shows usage summaries |
+| `proxy/start-proxy-bg.ps1` | Start proxy in background |
+| `proxy/stop-proxy.ps1` | Stop a background proxy |
 
 ## Git Workflow
 

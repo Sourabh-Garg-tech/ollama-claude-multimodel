@@ -155,6 +155,10 @@ $env:OLLAMA_NUM_CTX = "65536"
 | `system_prompt.txt` | Auto-loaded via `--append-system-prompt-file` on every launch |
 | `CLAUDE.md` | Contributor guide and architecture details |
 | `docs/claude-code-config.md` | Full Claude Code configuration reference |
+| `proxy/proxy.mjs` | Analytics proxy — logs per-model usage to JSONL |
+| `proxy/analytics.mjs` | CLI tool — reads JSONL logs, shows usage summaries |
+| `proxy/start-proxy-bg.ps1` | Start proxy in background |
+| `proxy/stop-proxy.ps1` | Stop a background proxy |
 
 ---
 
@@ -203,6 +207,30 @@ Edit the `*_SUPPORTED_CAPABILITIES` env vars in `launcher.ps1`. Valid values (te
 
 ---
 
+## Usage Analytics
+
+An optional analytics proxy can log per-model usage data for tracking GPU-time spend across sessions.
+
+**Start the proxy:**
+
+```powershell
+.\proxy\start-proxy-bg.ps1
+```
+
+The launcher automatically detects the proxy and routes traffic through it. When the proxy is off, the launcher connects directly to Ollama as before.
+
+**View usage:**
+
+```powershell
+node .\proxy\analytics.mjs              # Today's summary
+node .\proxy\analytics.mjs models        # Per-model breakdown
+node .\proxy\analytics.mjs daily --from 2026-05-01
+```
+
+See [proxy/README.md](proxy/README.md) for full documentation.
+
+---
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -214,6 +242,8 @@ Edit the `*_SUPPORTED_CAPABILITIES` env vars in `launcher.ps1`. Valid values (te
 | Haiku subagent crashes | Remove `CLAUDE_CODE_ALWAYS_ENABLE_EFFORT` from env vars |
 | No `/effort` command | Check `*_SUPPORTED_CAPABILITIES` env vars include `effort` |
 | No thinking output | Check `*_SUPPORTED_CAPABILITIES` env vars include `thinking` |
+| "Proxy: off" in launcher | Start the analytics proxy first with `.\proxy\start-proxy-bg.ps1` |
+| Proxy 502 errors | Ollama is not running — start it first |
 
 ---
 

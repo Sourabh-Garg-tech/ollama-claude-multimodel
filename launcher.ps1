@@ -132,8 +132,16 @@ function Test-Claude {
     $script:claudeOk = $null -ne (Get-Command claude -ErrorAction SilentlyContinue)
     if ($script:claudeOk) { "claude: found" } else { "claude: not found on PATH" }
 }
+function Test-Proxy {
+    try {
+        $null = Invoke-WebRequest -Uri "http://localhost:11435/health" -Method GET -TimeoutSec 1 -UseBasicParsing -ErrorAction Stop
+        $script:proxyOk = $true; "Proxy: active"
+    } catch {
+        $script:proxyOk = $false; "Proxy: off"
+    }
+}
 
-$status.Text = "$(Test-Ollama)  |  $(Test-Claude)"
+$status.Text = "$(Test-Ollama)  |  $(Test-Claude)  |  $(Test-Proxy)"
 $status.ForeColor = if ($script:ollamaOk -and $script:claudeOk) { $green } else { $red }
 
 # --- Launch Button ---
@@ -172,7 +180,11 @@ $launch.Add_Click({
     }
 
     # Set environment variables on current process (inherited by child)
-    $env:ANTHROPIC_BASE_URL            = "http://localhost:11434"
+    if ($script:proxyOk) {
+        $env:ANTHROPIC_BASE_URL        = "http://localhost:11435"
+    } else {
+        $env:ANTHROPIC_BASE_URL        = "http://localhost:11434"
+    }
     $env:ANTHROPIC_AUTH_TOKEN           = "ollama"
 
     # Model mapping
