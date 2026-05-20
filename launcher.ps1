@@ -8,6 +8,10 @@ Add-Type -Namespace Win32 -Name Native -MemberDefinition @"
 "@
 [Win32.Native]::ShowWindow([Win32.Native]::GetConsoleWindow(), 0)
 
+# --- Version ---
+$versionFile = Join-Path $PSScriptRoot "VERSION"
+$script:version = if (Test-Path $versionFile) { (Get-Content $versionFile -Raw).Trim() } else { "dev" }
+
 # --- Config ---
 $historyFile = "$env:USERPROFILE\.claude_launcher_history.txt"
 $maxHistory  = 10
@@ -39,14 +43,14 @@ if (Test-Path $historyFile) {
 
 # --- Form ---
 $form = New-Object System.Windows.Forms.Form -Property @{
-    Text = "Claude Launcher"; Size = New-Object System.Drawing.Size(700, 350)
+    Text = "Claude Launcher v$script:version"; Size = New-Object System.Drawing.Size(700, 420)
     StartPosition = "CenterScreen"; BackColor = $bg; ForeColor = $fg
     FormBorderStyle = "FixedDialog"; MaximizeBox = $false
 }
 
 # --- Title ---
 $form.Controls.Add((New-Control System.Windows.Forms.Label @{
-    Text = "Claude Code Launcher"
+    Text = "Claude Code Launcher v$script:version"
     Font = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
     ForeColor = $fg; Size = New-Object System.Drawing.Size(660, 35)
     Location = New-Object System.Drawing.Point(20, 15)
@@ -125,12 +129,25 @@ function Test-Ollama {
         $null = Invoke-WebRequest -Uri "http://localhost:11434" -Method GET -TimeoutSec 3 -UseBasicParsing -ErrorAction Stop
         $script:ollamaOk = $true; "Ollama: running"
     } catch {
-        $script:ollamaOk = $false; "Ollama: not running -- start Ollama first"
+        $script:ollamaOk = $false; "Ollama: not running"
     }
+}
+function Start-Ollama {
+    $ollamaExe = (Get-Command ollama -ErrorAction SilentlyContinue).Source
+    if (-not $ollamaExe) { return $false }
+    try {
+        Start-Process -FilePath $ollamaExe -ArgumentList "serve" -WindowStyle Hidden
+        Start-Sleep -Seconds 3
+        $null = Invoke-WebRequest -Uri "http://localhost:11434" -Method GET -TimeoutSec 5 -UseBasicParsing -ErrorAction Stop
+        $script:ollamaOk = $true; $true
+    } catch { $false }
 }
 function Test-Claude {
     $script:claudeOk = $null -ne (Get-Command claude -ErrorAction SilentlyContinue)
     if ($script:claudeOk) { "claude: found" } else { "claude: not found on PATH" }
+}
+function Test-Node {
+    $script:nodeOk = $null -ne (Get-Command node -ErrorAction SilentlyContinue)
 }
 function Test-Proxy {
     try {
@@ -140,8 +157,34 @@ function Test-Proxy {
         $script:proxyOk = $false; "Proxy: off"
     }
 }
+function Start-Proxy {
+    $proxyScript = Join-Path $PSScriptRoot "proxy\proxy.mjs"
+    if (-not (Test-Path $proxyScript)) { return $false }
+    try {
+        Start-Process -FilePath "node" -ArgumentList "`"$proxyScript`"" -WindowStyle Hidden
+        Start-Sleep -Milliseconds 1000
+        $null = Invoke-WebRequest -Uri "http://localhost:11435/health" -Method GET -TimeoutSec 2 -UseBasicParsing -ErrorAction Stop
+        $script:proxyOk = $true; $true
+    } catch { $false }
+}
 
-$status.Text = "$(Test-Ollama)  |  $(Test-Claude)  |  $(Test-Proxy)"
+# Run checks
+$ollamaStatus = Test-Ollama
+$claudeStatus = Test-Claude
+Test-Node
+$proxyStatus = Test-Proxy
+
+# Auto-start Ollama if not running
+if (-not $script:ollamaOk) {
+    $ollamaStatus = if (Start-Ollama) { "Ollama: started" } else { "Ollama: failed to start" }
+}
+
+# Auto-start proxy if Node.js is available and proxy isn't running
+if ($script:nodeOk -and -not $script:proxyOk) {
+    $proxyStatus = if (Start-Proxy) { "Proxy: started" } else { "Proxy: off" }
+}
+
+$status.Text = "$ollamaStatus  |  $claudeStatus  |  $proxyStatus"
 $status.ForeColor = if ($script:ollamaOk -and $script:claudeOk) { $green } else { $red }
 
 # --- Launch Button ---
@@ -160,7 +203,7 @@ $launch.Add_Click({
         return
     }
     if (-not $script:ollamaOk) {
-        [System.Windows.Forms.MessageBox]::Show("Ollama is not running. Start Ollama first.", "Ollama Not Running", "OK", "Error")
+        [System.Windows.Forms.MessageBox]::Show("Ollama could not be started. Make sure Ollama is installed and try starting it manually.", "Ollama Unavailable", "OK", "Error")
         return
     }
     if (-not $script:claudeOk) {

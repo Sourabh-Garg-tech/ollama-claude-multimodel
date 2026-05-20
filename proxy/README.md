@@ -102,12 +102,13 @@ Logs are written to `logs/YYYY-MM-DD.jsonl` (one file per day):
 
 ## Launcher Integration
 
-The launcher automatically detects if the proxy is running:
+The launcher automatically starts the proxy if Node.js is available and the proxy isn't already running:
 
-- **Proxy running** — status line shows `Proxy: active`, `ANTHROPIC_BASE_URL` is set to `http://localhost:11435`
-- **Proxy off** — status line shows `Proxy: off`, `ANTHROPIC_BASE_URL` is set to `http://localhost:11434`
+- **Proxy auto-started** — status line shows `Proxy: started`, `ANTHROPIC_BASE_URL` is set to `http://localhost:11435`
+- **Proxy already running** — status line shows `Proxy: active`, `ANTHROPIC_BASE_URL` is set to `http://localhost:11435`
+- **Proxy off** (no Node.js or start failed) — status line shows `Proxy: off`, `ANTHROPIC_BASE_URL` is set to `http://localhost:11434`
 
-No configuration needed. Just start the proxy before launching Claude Code.
+No configuration needed. The proxy starts automatically when you launch Claude Code.
 
 ## Troubleshooting
 

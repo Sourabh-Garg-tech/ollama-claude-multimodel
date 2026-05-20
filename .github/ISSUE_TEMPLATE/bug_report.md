@@ -9,7 +9,7 @@ labels: bug
 - Windows version:
 - Ollama version:
 - Claude Code CLI version:
-- Launcher version/commit:
+- Launcher version: <!-- check VERSION file or title bar -->
 
 **What happened:**
 
@@ -31,4 +31,4 @@ labels: bug
 
 **Launcher status line:**
 
-<!-- What did the prereq checks show? e.g., "Ollama: running | claude: found" -->
+<!-- What did the prereq checks show? e.g., "Ollama: running | claude: found | Proxy: active" -->

@@ -1,13 +1,14 @@
 # Ollama Claude Launcher
 
+![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4.svg)
 ![Requires: Ollama](https://img.shields.io/badge/requires-Ollama-6E40C9.svg)
 ![Requires: Claude Code CLI](https://img.shields.io/badge/requires-Claude_Code_CLI-D97706.svg)
 
-> Redirect [Claude Code](https://claude.ai/code) to [Ollama Cloud](https://ollama.com) models with a Windows GUI — no proxies, no routing rules, no Python dependencies.
+> Redirect [Claude Code](https://claude.ai/code) to [Ollama Cloud](https://ollama.com) models with a Windows GUI — auto-starts services, tracks usage, zero Python dependencies.
 
-This launcher lets you run Claude Code against open-weight models on Ollama Cloud instead of Anthropic's API. Pick a project folder, check prerequisites, and click Launch.
+The launcher auto-starts Ollama and the analytics proxy, then launches Claude Code against Ollama Cloud models. Pick a project folder and click Launch.
 
 ---
 
@@ -23,10 +24,10 @@ This launcher lets you run Claude Code against open-weight models on Ollama Clou
 ┌─────────────────────────────────────────────────┐
 │                launcher.ps1                      │
 │  ┌─────────────┐  ┌──────────┐  ┌───────────┐ │
-│  │ Folder Picker │  │ Prereq   │  │ Env Vars  │ │
-│  │  + History   │  │  Checks  │  │  (model   │ │
+│  │ Folder Picker │  │ Auto     │  │ Env Vars  │ │
+│  │  + History   │  │  Start   │  │  (model   │ │
 │  │              │  │ Ollama ✓  │  │  mapping) │ │
-│  │  Last 10     │  │ Claude ✓  │  │           │ │
+│  │  Last 10     │  │ Proxy  ✓  │  │           │ │
 │  └─────────────┘  └──────────┘  └─────┬─────┘ │
 └─────────────────────────────────────────┼───────┘
                                           │
@@ -54,10 +55,13 @@ This launcher lets you run Claude Code against open-weight models on Ollama Clou
 | Feature | What It Means |
 |---|---|
 | 3-tier model mapping | Opus/Sonnet/Haiku mapped to budget-friendly Ollama Cloud models |
+| Auto-start services | Ollama and analytics proxy start automatically if not running |
 | GUI folder picker | Browse or select from last 10 recent folders |
-| Prerequisite checks | Ollama and `claude` CLI status shown before launch |
+| Prerequisite checks | Ollama, proxy, and `claude` CLI status shown before launch |
+| Usage analytics | Per-model token counts, request duration, and daily summaries via proxy |
 | Custom system prompt | `system_prompt.txt` auto-loaded on every session |
 | Capability flags | Effort, thinking, adaptive thinking enabled per tier |
+| Version tracking | `VERSION` file read by launcher, shown in title bar |
 | No black popup | VBS entry point hides the PowerShell console window |
 
 ---
@@ -84,7 +88,7 @@ ollama pull deepseek-v4-flash:cloud
 1. Place a shortcut to `Claude Launcher.vbs` on your Desktop
 2. Double-click it
 3. Pick or browse to a project folder
-4. Check that both Ollama and `claude` CLI show green (ready)
+4. The launcher auto-starts Ollama and the analytics proxy if they're not running
 5. Click **Launch Claude**
 
 The launcher remembers your last 10 project folders. Your custom system prompt (`system_prompt.txt`) is automatically loaded on every session.
@@ -146,11 +150,30 @@ $env:OLLAMA_NUM_CTX = "65536"
 
 ---
 
+## Versioning
+
+The project version is stored in `VERSION` at the repository root. The launcher reads this file on startup and displays it in the window title and header.
+
+| Version | Changes |
+|---|---|
+| **1.0.0** | Initial release — 3-tier model mapping, GUI launcher, prereq checks, capability flags |
+| **2.0.0** | Analytics proxy (per-model usage logging), auto-start Ollama and proxy, version display |
+
+To tag a release:
+
+```powershell
+git tag -a v2.0.0 -m "Analytics proxy, auto-start, versioning"
+git push origin v2.0.0
+```
+
+---
+
 ## Files
 
 | File | Purpose |
 |---|---|
-| `launcher.ps1` | PowerShell GUI — folder picker, history, prereq checks, env vars, launch |
+| `VERSION` | Project version number (read by launcher on startup) |
+| `launcher.ps1` | PowerShell GUI — folder picker, history, auto-start, prereq checks, env vars, launch |
 | `Claude Launcher.vbs` | Double-click entry point (no cmd.exe flash) |
 | `system_prompt.txt` | Auto-loaded via `--append-system-prompt-file` on every launch |
 | `CLAUDE.md` | Contributor guide and architecture details |
@@ -235,14 +258,14 @@ See [proxy/README.md](proxy/README.md) for full documentation.
 
 | Problem | Fix |
 |---|---|
-| "Ollama: not running" | Start Ollama first |
+| "Ollama: failed to start" | Install Ollama or start it manually |
 | "claude: not found" | Install Claude Code CLI and add it to PATH |
+| "Proxy: off" | Install Node.js (the proxy requires it) or start manually with `.\proxy\start-proxy-bg.ps1` |
 | Models not available | Run `ollama pull` for each model |
 | Black popup window | Use `Claude Launcher.vbs` instead of running `launcher.ps1` directly |
 | Haiku subagent crashes | Remove `CLAUDE_CODE_ALWAYS_ENABLE_EFFORT` from env vars |
 | No `/effort` command | Check `*_SUPPORTED_CAPABILITIES` env vars include `effort` |
 | No thinking output | Check `*_SUPPORTED_CAPABILITIES` env vars include `thinking` |
-| "Proxy: off" in launcher | Start the analytics proxy first with `.\proxy\start-proxy-bg.ps1` |
 | Proxy 502 errors | Ollama is not running — start it first |
 
 ---
