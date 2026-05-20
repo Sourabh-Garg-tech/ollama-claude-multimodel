@@ -110,6 +110,40 @@ The launcher automatically starts the proxy if Node.js is available and the prox
 
 No configuration needed. The proxy starts automatically when you launch Claude Code.
 
+## Proof of Concept: Multi-Instance Usage Analysis
+
+The proxy was tested with **two Claude Code instances** running simultaneously against Ollama Cloud (3 concurrent model slots). Each instance analyzed a different project — one with many Markdown files, one with many Python files.
+
+### Session Summary (~10 minutes, 28 requests)
+
+| Tier | Model | Requests | Input Tokens | Output Tokens | Efficiency (out/1K in) | Normal Latency | Under Contention |
+|---|---|---|---|---|---|---|---|
+| Haiku | deepseek-v4-flash | 15 (54%) | 799K | 13,612 | 17.0 | 2-3s | 55-106s |
+| Sonnet | glm-5.1 | 9 (32%) | 273K | 3,035 | 11.1 | 4-5s | 12-19s |
+| Opus | kimi-k2.6 | 4 (14%) | 155K | 1,741 | 11.2 | 7-10s | N/A |
+| **Total** | | **28** | **1.23M** | **18,388** | **15.0** | | |
+
+### Key Findings
+
+1. **Haiku is the contention bottleneck.** Under normal load, Haiku responds in 2-3s. With two instances competing for the same Haiku model slot, latency spiked to 55-106s (25-50x slower). Haiku handles compaction, summarization, and subagents — when it stalls, everything stalls.
+
+2. **Sonnet handles concurrency well.** Sonnet latency increased modestly (4-5s to 12-19s) under contention but remained usable. Sonnet is the right tier for parallel instances.
+
+3. **Context windows grow beyond `OLLAMA_NUM_CTX`.** Despite setting `OLLAMA_NUM_CTX=65536`, Ollama served requests with up to 155K input tokens — 2.4x the configured limit. Each large context request costs more GPU time than expected.
+
+4. **Input tokens dominate cost.** 1.23M input tokens vs 18K output tokens — a 67:1 ratio. Large context windows (35-65K per request) are the primary cost driver, not output generation.
+
+5. **Ollama doesn't support all Claude Code API endpoints.** Requests to `/v1/messages/count_tokens` return 404. The proxy correctly logs these, which helps identify API compatibility gaps.
+
+6. **Token efficiency varies by tier.** Haiku produces 17 output tokens per 1K input (most efficient), Sonnet 11.1, Opus 11.2. But Opus delivers higher reasoning quality per token — the right metric depends on the task.
+
+### Recommendations
+
+- **Single instance**: All tiers perform normally. No issues.
+- **Two instances**: Viable for Sonnet-heavy work. Expect Haiku-tier slowdown (background compaction, subagents).
+- **Context management**: Start fresh sessions periodically to prevent context bloat beyond `OLLAMA_NUM_CTX`.
+- **Budget monitoring**: Use `node proxy/analytics.mjs models` to track per-model token spend across sessions.
+
 ## Troubleshooting
 
 | Problem | Fix |
