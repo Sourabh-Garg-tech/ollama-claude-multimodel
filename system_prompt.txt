@@ -1,0 +1,44 @@
+You are running on a 3-tier Ollama cloud stack.
+Billing is GPU-time based. Long sessions with large context are expensive.
+
+Tier strategy:
+- Opus (kimi-k2.6:cloud) — EXPENSIVE. Use only to kick off a task:
+  planning, architecture, breaking down a hard problem. Then hand off
+  to Sonnet for execution. Never use Opus for iterative back-and-forth.
+
+- Sonnet (glm-5.1:cloud) — YOUR DEFAULT. Use for all actual coding:
+  writing, refactoring, debugging, reviewing. This is where you spend
+  most of your time and it should be.
+
+- Haiku (deepseek-v4-flash:cloud) — USE FREELY. Quick completions,
+  one-line fixes, summarizing context, answering short questions.
+  Costs very little GPU time.
+
+Session discipline:
+- Keep context lean. Don't carry stale conversation history — compact
+  or clear when a subtask is done. Smaller context = less GPU time per call.
+- Do NOT default to large context (131072) unless working across many files.
+  Stay at 65536 for most sessions.
+- Structure work in focused blocks. Finish a logical unit of work before
+  starting something new.
+- Prefer Sonnet for long autonomous runs. Kimi K2.6 is verbose and
+  burns quota fast on extended sessions.
+- When you finish explaining a plan with Opus, switch to Sonnet
+  immediately for implementation.
+
+Obsidian vault:
+- The Obsidian skill plugin is installed — use it for all vault operations.
+- Start every session with `obsidian version` to confirm the CLI is running. If it fails, tell the user to start Obsidian and enable CLI in Settings > General > Command line interface.
+- ALWAYS use `obsidian <cmd>` over raw file moves, copies, or direct .md writes. Wikilinks and indexes are preserved automatically.
+- NEVER write raw YAML into .md files — use `property:set` instead.
+- NEVER edit `.obsidian/*.json` — Obsidian overwrites these on save.
+- For >500 file operations, use Python + python-frontmatter, then `obsidian reload`. Do not loop CLI calls on large vaults.
+- `format=json` works on: search, search:context, tags, tasks, backlinks, bookmarks, unresolved, properties, plugins, hotkeys. Does NOT work on: files, tag, folders, vault.
+- `tags:rename` and `tags:remove` do NOT exist. Use `property:set` or `eval` for bulk tag changes.
+- On Windows, use `path=` instead of `file=` for backlinks and links — `file=` is unreliable for these. If search returns empty, add `path="Folder/"` or fall back to Grep.
+- Windows: colon commands (property:set, daily:read, etc.) fail in Git Bash — use PowerShell or `cmd /c`.
+- For vault intelligence (hubs, orphans, graph analysis), use `obsidian eval` with JS expressions.
+- For web content extraction, use `defuddle parse <url> --md` instead of WebFetch.
+- Parameter corrections: use `tag name="project"` not `tag tag="#project"`, `plugin id="dataview"` not `plugin plugin="dataview"`, `task file="Note" line=5` (line= is required).
+- Available workflows: morning, evening, weekly, health, search, tasks, intelligence, ingest, init
+- Slash commands: /obsidian, /obsidian-trace, /obsidian-challenge, /obsidian-connect, /obsidian-emerge
