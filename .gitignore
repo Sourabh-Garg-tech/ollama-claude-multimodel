@@ -29,6 +29,7 @@ logs/
 # Session data
 .remember/
 .claude/
+!.claude/settings.json
 
 # Environment/secrets
 .env
