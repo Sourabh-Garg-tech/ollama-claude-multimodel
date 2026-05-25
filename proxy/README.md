@@ -58,6 +58,12 @@ node .\proxy\analytics.mjs
 node .\proxy\analytics.mjs models
 ```
 
+**Per-session breakdown (by instance):**
+
+```powershell
+node .\proxy\analytics.mjs sessions
+```
+
 **Daily totals over a date range:**
 
 ```powershell
@@ -75,7 +81,7 @@ node .\proxy\analytics.mjs raw
 Logs are written to `logs/YYYY-MM-DD.jsonl` (one file per day):
 
 ```json
-{"timestamp":"2026-05-20T14:30:00.123Z","model":"glm-5.1:cloud","duration_ms":3420,"input_tokens":1523,"output_tokens":487,"status":200,"stream":true,"endpoint":"/v1/messages","method":"POST"}
+{"timestamp":"2026-05-20T14:30:00.123Z","model":"glm-5.1:cloud","duration_ms":3420,"input_tokens":1523,"output_tokens":487,"status":200,"stream":true,"endpoint":"/v1/messages","method":"POST","session_id":"a1b2c3d4"}
 ```
 
 | Field | Description |
@@ -88,6 +94,7 @@ Logs are written to `logs/YYYY-MM-DD.jsonl` (one file per day):
 | `status` | HTTP status code from Ollama |
 | `stream` | Whether the response was streamed (SSE) |
 | `endpoint` | Request path (always `/v1/messages`) |
+| `session_id` | Unique ID per launcher session (first 8 chars of a UUID) |
 | `method` | HTTP method (always `POST`) |
 
 ## Files

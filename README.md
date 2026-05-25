@@ -1,6 +1,6 @@
 # Ollama Claude Launcher
 
-![Version](https://img.shields.io/badge/version-2.0.0-blue.svg)
+![Version](https://img.shields.io/badge/version-2.1.0-blue.svg)
 ![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform: Windows](https://img.shields.io/badge/platform-Windows-0078D4.svg)
 ![Requires: Ollama](https://img.shields.io/badge/requires-Ollama-6E40C9.svg)
@@ -158,12 +158,13 @@ The project version is stored in `VERSION` at the repository root. The launcher 
 |---|---|
 | **1.0.0** | Initial release — 3-tier model mapping, GUI launcher, prereq checks, capability flags |
 | **2.0.0** | Analytics proxy (per-model usage logging), auto-start Ollama and proxy, version display |
+| **2.1.0** | Cost optimization, session attribution, Haiku thinking removed |
 
 To tag a release:
 
 ```powershell
-git tag -a v2.0.0 -m "Analytics proxy, auto-start, versioning"
-git push origin v2.0.0
+git tag -a v2.1.0 -m "Cost optimization"
+git push origin v2.1.0
 ```
 
 ---
@@ -227,6 +228,16 @@ Edit the `*_SUPPORTED_CAPABILITIES` env vars in `launcher.ps1`. Valid values (te
 | `interleaved_thinking` | Thinking between tool calls |
 
 **Do not set** `CLAUDE_CODE_ALWAYS_ENABLE_EFFORT=1` — it bypasses capability checks and crashes Haiku subagents ([issue #47175](https://github.com/anthropics/claude-code/issues/47175)).
+
+### Change cost optimization settings
+
+The launcher includes environment variables that reduce GPU time on Ollama Cloud:
+
+| Variable | Value | Purpose |
+|---|---|---|
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `60` | Compacts context at 60% instead of 95%. Keeps average context smaller, reducing input tokens per request. |
+| `MAX_THINKING_TOKENS` | `16384` | Caps hidden thinking tokens to 16K (default 32K). Cuts thinking GPU time by ~50%. |
+| Haiku `SUPPORTED_CAPABILITIES` | `effort` | Thinking removed from Haiku — background tasks don't need deep reasoning, saving invisible GPU time on the most frequently called tier. |
 
 ---
 
