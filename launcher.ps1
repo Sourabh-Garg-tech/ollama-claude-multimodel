@@ -228,7 +228,7 @@ $launch.Add_Click({
     } else {
         $env:ANTHROPIC_BASE_URL        = "http://localhost:11434"
     }
-    $env:ANTHROPIC_AUTH_TOKEN           = "ollama"
+    $env:ANTHROPIC_AUTH_TOKEN           = "ollama:$([guid]::NewGuid().ToString().Substring(0,8))"
 
     # Model mapping
     $env:ANTHROPIC_DEFAULT_OPUS_MODEL   = "kimi-k2.6:cloud"
@@ -246,10 +246,12 @@ $launch.Add_Click({
     # Capabilities (confirmed working with Ollama Cloud via API tests)
     $env:ANTHROPIC_DEFAULT_OPUS_MODEL_SUPPORTED_CAPABILITIES   = "effort,xhigh_effort,max_effort,thinking,adaptive_thinking,interleaved_thinking"
     $env:ANTHROPIC_DEFAULT_SONNET_MODEL_SUPPORTED_CAPABILITIES = "effort,xhigh_effort,max_effort,thinking,adaptive_thinking,interleaved_thinking"
-    $env:ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES  = "effort,thinking"
+    $env:ANTHROPIC_DEFAULT_HAIKU_MODEL_SUPPORTED_CAPABILITIES  = "effort"
 
-    # Context
+    # Context and cost optimization
     $env:OLLAMA_NUM_CTX                 = "65536"
+    $env:CLAUDE_AUTOCOMPACT_PCT_OVERRIDE = "60"
+    $env:MAX_THINKING_TOKENS            = "16384"
 
     # Launch Claude Code in a new PowerShell window
     Start-Process powershell.exe -ArgumentList "-NoExit","-Command","`"Set-Location '$path'; claude$systemPromptArg`""

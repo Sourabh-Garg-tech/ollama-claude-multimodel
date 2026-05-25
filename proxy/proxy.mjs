@@ -26,6 +26,14 @@ const server = http.createServer((req, res) => {
   let requestBody = [];
   let model = null;
   let isStream = false;
+  let sessionId = null;
+
+  // Extract session ID from auth token: "ollama:<uuid>" → "<uuid>", plain "ollama" → null
+  const authHeader = req.headers['authorization'] || req.headers['x-api-key'] || '';
+  const authValue = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : authHeader;
+  if (authValue && authValue.includes(':')) {
+    sessionId = authValue.split(':')[1] || null;
+  }
 
   // Buffer request body to extract model name
   req.on('data', (chunk) => {
@@ -58,6 +66,13 @@ const server = http.createServer((req, res) => {
     // Remove proxy-specific headers before forwarding
     delete options.headers['host'];
     options.headers['host'] = `${OLLAMA_HOST}:${OLLAMA_PORT}`;
+    // Strip session ID from auth token before forwarding to Ollama
+    if (options.headers['authorization']?.includes(':')) {
+      options.headers['authorization'] = `Bearer ${authValue.split(':')[0]}`;
+    }
+    if (options.headers['x-api-key']?.includes(':')) {
+      options.headers['x-api-key'] = authValue.split(':')[0];
+    }
 
     const proxyReq = http.request(options, (proxyRes) => {
       const contentType = proxyRes.headers['content-type'] || '';
@@ -65,10 +80,10 @@ const server = http.createServer((req, res) => {
 
       if (isSSE && model) {
         // Streaming response: pipe to client while parsing SSE for usage data
-        handleStreamingResponse(proxyRes, res, model, isStream, startTime, req.url, req.method);
+        handleStreamingResponse(proxyRes, res, model, isStream, startTime, req.url, req.method, sessionId);
       } else if (model) {
         // Non-streaming response: buffer, parse usage, forward
-        handleNonStreamingResponse(proxyRes, res, model, isStream, startTime, req.url, req.method);
+        handleNonStreamingResponse(proxyRes, res, model, isStream, startTime, req.url, req.method, sessionId);
       } else {
         // Non-messages request or unparseable: forward as-is
         res.writeHead(proxyRes.statusCode, proxyRes.headers);
@@ -90,7 +105,7 @@ const server = http.createServer((req, res) => {
   });
 });
 
-function handleStreamingResponse(proxyRes, clientRes, model, isStream, startTime, endpoint, method) {
+function handleStreamingResponse(proxyRes, clientRes, model, isStream, startTime, endpoint, method, sessionId) {
   let inputTokens = 0;
   let outputTokens = 0;
   let sseBuffer = '';
@@ -153,6 +168,7 @@ function handleStreamingResponse(proxyRes, clientRes, model, isStream, startTime
       stream: true,
       endpoint,
       method,
+      session_id: sessionId,
     });
   });
 
@@ -162,7 +178,7 @@ function handleStreamingResponse(proxyRes, clientRes, model, isStream, startTime
   });
 }
 
-function handleNonStreamingResponse(proxyRes, clientRes, model, isStream, startTime, endpoint, method) {
+function handleNonStreamingResponse(proxyRes, clientRes, model, isStream, startTime, endpoint, method, sessionId) {
   let responseBody = [];
 
   proxyRes.on('data', (chunk) => {
@@ -196,6 +212,7 @@ function handleNonStreamingResponse(proxyRes, clientRes, model, isStream, startT
       stream: false,
       endpoint,
       method,
+      session_id: sessionId,
     });
   });
 

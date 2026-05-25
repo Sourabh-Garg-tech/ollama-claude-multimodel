@@ -4,12 +4,13 @@
 
 The project version is stored in `VERSION` at the repository root. The launcher reads this file on startup and displays it in the window title and header.
 
-Current version: **2.0.0**
+Current version: **2.1.0**
 
 | Version | Changes |
 |---|---|
 | 1.0.0 | Initial release — 3-tier model mapping, GUI launcher, prereq checks, capability flags |
 | 2.0.0 | Analytics proxy, auto-start Ollama and proxy, version display |
+| 2.1.0 | Cost optimization, session attribution, Haiku thinking removed |
 
 ## Architecture
 
@@ -94,7 +95,7 @@ Claude Launcher.vbs          ← double-click entry point
 |---|---|
 | `*_OPUS_MODEL_SUPPORTED_CAPABILITIES` | `effort,xhigh_effort,max_effort,thinking,adaptive_thinking,interleaved_thinking` |
 | `*_SONNET_MODEL_SUPPORTED_CAPABILITIES` | `effort,xhigh_effort,max_effort,thinking,adaptive_thinking,interleaved_thinking` |
-| `*_HAIKU_MODEL_SUPPORTED_CAPABILITIES` | `effort,thinking` |
+| `*_HAIKU_MODEL_SUPPORTED_CAPABILITIES` | `effort` |
 
 What each capability enables:
 - `effort` — `/effort` command (low/medium/high effort levels)
@@ -103,13 +104,17 @@ What each capability enables:
 - `adaptive_thinking` — model decides how much to think per step based on complexity
 - `interleaved_thinking` — thinking between tool calls (critical for agentic workflows)
 
+**Thinking removed from Haiku:** Haiku handles background tasks (compaction, summarization, subagents) that don't need deep reasoning. Removing `thinking` from Haiku eliminates invisible thinking token overhead on the most frequently called tier.
+
 **Not set:** `CLAUDE_CODE_ALWAYS_ENABLE_EFFORT` — this variable bypasses model capability checks and crashes Haiku subagents ([issue #47175](https://github.com/anthropics/claude-code/issues/47175)).
 
-### Context
+### Context and Cost Optimization
 
 | Variable | Value | Notes |
 |---|---|---|
 | `OLLAMA_NUM_CTX` | `65536` | 64K tokens. Increase to `131072` for large codebases, but larger context costs more GPU time. |
+| `CLAUDE_AUTOCOMPACT_PCT_OVERRIDE` | `60` | Triggers compaction at 60% of context instead of 95%. Keeps average context smaller, reducing GPU time per request. |
+| `MAX_THINKING_TOKENS` | `16384` | Caps hidden thinking tokens to 16K (default 32K). Cuts invisible thinking GPU time by ~50% while allowing deep reasoning. |
 
 ## File Conventions
 
